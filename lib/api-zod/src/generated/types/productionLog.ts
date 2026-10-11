@@ -11,7 +11,7 @@ export interface ProductionLog {
   jobId: string;
   /**
      * @minLength 1
-     * @maxLength 80
+     * @maxLength 100
      */
   staff: string;
   date: string;
@@ -30,5 +30,9 @@ export interface ProductionLog {
   machineId: string;
   qcStatus: ProductionLogQcStatus;
   qcNote: string;
+  createdBy?: string;
+  reviewedBy?: string;
+  reviewerName?: string;
+  reviewedAt?: string;
   createdAt: string;
 }

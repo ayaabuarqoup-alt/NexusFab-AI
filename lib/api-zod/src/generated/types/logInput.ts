@@ -9,7 +9,7 @@ export interface LogInput {
   jobId: string;
   /**
      * @minLength 1
-     * @maxLength 80
+     * @maxLength 100
      */
   staff: string;
   date: string;

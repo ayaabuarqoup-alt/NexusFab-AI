@@ -4,7 +4,11 @@ import type { CreateJobResponse, CreateLogResponse } from "@workspace/api-zod";
 
 export type Job = ReturnType<typeof CreateJobResponse.parse>;
 export type Log = ReturnType<typeof CreateLogResponse.parse>;
-export interface Vault { jobs: Job[]; logs: Log[] }
+export interface AuditEvent { id: string; actorId: string; actorName: string; action: string; targetId: string; at: string; detail: string }
+export interface Vault { jobs: Job[]; logs: Log[]; audit?: AuditEvent[] }
+export function audit(v: Vault, actor: { userId: string; userName: string }, action: string, targetId: string, detail = "") {
+  (v.audit ??= []).unshift({ id: randomUUID(), actorId: actor.userId, actorName: actor.userName, action, targetId, at: new Date().toISOString(), detail });
+}
 const secret = process.env.SESSION_SECRET;
 if (!secret) throw new Error("SESSION_SECRET is required");
 function key(tenant: string) { return createHmac("sha256", secret!).update(`nexusfab-vault:${tenant}`).digest(); }
@@ -29,12 +33,19 @@ export async function loadVault(tenant: string): Promise<Vault> {
   if (!rows[0]) throw new Error("Factory missing");
   return decrypt(tenant, rows[0].payload);
 }
-export async function mutateVault<T>(tenant: string, fn: (v: Vault) => T): Promise<T> {
+export async function mutateVault<T>(tenant: string, fn: (v: Vault) => T, actor?: {userId: string; roles: string[]}): Promise<T> {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
     const { rows } = await client.query("SELECT payload FROM factory_vaults WHERE id=$1 FOR UPDATE", [tenant]);
     if (!rows[0]) throw new Error("Factory missing");
+    if (actor && actor.userId !== "demo") {
+      const user = await client.query("SELECT active,role,password_hash FROM factory_users WHERE id=$1 AND factory_id=$2",[actor.userId,tenant]);
+      if (!user.rows[0]?.active || !user.rows[0]?.password_hash || !actor.roles.includes(user.rows[0].role)) {
+        const { OperationError } = await import("../routes/operations");
+        throw new OperationError("FORBIDDEN",403);
+      }
+    }
     const vault = decrypt(tenant, rows[0].payload);
     const result = fn(vault);
     await client.query("UPDATE factory_vaults SET payload=$1 WHERE id=$2", [encrypt(tenant, vault), tenant]);

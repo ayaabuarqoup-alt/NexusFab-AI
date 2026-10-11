@@ -1,15 +1,40 @@
 import { useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Factory, Lock, ShieldCheck } from "lucide-react";
-import { useLogin, getGetSessionQueryKey } from "@workspace/api-client-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Factory, KeyRound, Lock } from "lucide-react";
+import { useLogin, useActivateAccount, getGetSessionQueryKey } from "@workspace/api-client-react";
 import { useI18n, errorMessage } from "@/lib/i18n";
 import { LangToggle, usePageMeta } from "@/components/shell";
 import { Field, inputCls, broadcastAuth } from "@/components/common";
 
-const demos = [
-  { u: "factory_carton", p: "password123", label: "Carton & Printing" },
-  { u: "factory_plastics", p: "secure456", label: "Plastics & Packaging" },
-];
+function Activate({ onDone }: { onDone: () => void }) {
+  const { t } = useI18n();
+  const [token, setToken] = useState("");
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [err, setErr] = useState("");
+  const act = useActivateAccount({ mutation: { onSuccess: () => { setToken(""); setPw(""); setPw2(""); onDone(); } } });
+  const submit = (e: FormEvent) => {
+    e.preventDefault(); setErr("");
+    const tk = token.trim().toLowerCase();
+    if (!/^[a-f0-9]{64}$/.test(tk)) return setErr(t("tokenRule"));
+    if (pw.length < 12) return setErr(t("pwMin"));
+    if (pw !== pw2) return setErr(t("pwMismatch"));
+    act.mutate({ data: { token: tk, password: pw } });
+  };
+  return (
+    <form onSubmit={submit} className="mt-6 space-y-4" autoComplete="off">
+      <Field label={t("token")}><input dir="ltr" className={`${inputCls} num text-xs`} value={token} onChange={(e) => setToken(e.target.value)} spellCheck={false} data-testid="input-token" /></Field>
+      <span className="-mt-2 block text-[11px] text-muted-foreground">{t("tokenRule")}</span>
+      <Field label={t("newPw")}><input type="password" className={inputCls} minLength={12} maxLength={256} value={pw} onChange={(e) => setPw(e.target.value)} autoComplete="new-password" data-testid="input-activate-password" /></Field>
+      <Field label={t("confirmPw")}><input type="password" className={inputCls} maxLength={256} value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" data-testid="input-activate-confirm" /></Field>
+      <span className="-mt-2 block text-[11px] text-muted-foreground">{t("pwMin")}</span>
+      {(err || act.isError) && <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive" data-testid="text-activate-error">{err || errorMessage(act.error, t)}</div>}
+      <button disabled={act.isPending} data-testid="button-activate" className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary text-sm font-medium text-primary-foreground shadow-md transition hover:brightness-110 disabled:opacity-70">
+        {act.isPending ? t("activating") : t("activate")}<ArrowRight className="h-4 w-4 rtl:rotate-180" />
+      </button>
+    </form>
+  );
+}
 
 export default function Login() {
   const { t } = useI18n();
@@ -17,7 +42,16 @@ export default function Login() {
   usePageMeta(t("nav_login"));
   const [username, setU] = useState("");
   const [password, setP] = useState("");
-  const login = useLogin({ mutation: { onSuccess: (s) => { qc.clear(); qc.setQueryData(getGetSessionQueryKey(), s); broadcastAuth(); } } });
+  const [mode, setMode] = useState<"login" | "activate">("login");
+  const [notice, setNotice] = useState<"" | "activated" | "pwChanged">(() => {
+    try { const n = sessionStorage.getItem("nf-login-notice"); sessionStorage.removeItem("nf-login-notice"); return n === "pwChanged" ? "pwChanged" : ""; } catch { return ""; }
+  });
+  const login = useLogin({ mutation: { onSuccess: async (s) => {
+    await qc.cancelQueries();
+    qc.removeQueries({ predicate: (q) => q.queryKey[0] !== getGetSessionQueryKey()[0] });
+    qc.setQueryData(getGetSessionQueryKey(), s);
+    broadcastAuth();
+  } } });
   const submit = (e: FormEvent) => { e.preventDefault(); if (username && password) login.mutate({ data: { username: username.trim(), password } }); };
 
   return (
@@ -56,6 +90,14 @@ export default function Login() {
         </div>
         <div className="mx-auto my-auto w-full max-w-sm py-10">
           <div className="rise rounded-lg border bg-card p-7 shadow-lg">
+            {mode === "activate" ? (<>
+              <button type="button" onClick={() => setMode("login")} data-testid="button-back-login" className="mb-4 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3.5 w-3.5 rtl:rotate-180" />{t("backToLogin")}</button>
+              <div className="mb-5 grid h-10 w-10 place-items-center rounded-md bg-[hsl(32_95%_52%/0.12)] text-[hsl(32_80%_40%)]"><KeyRound className="h-5 w-5" /></div>
+              <h1 className="text-xl font-semibold tracking-tight">{t("activateTitle")}</h1>
+              <p className="mt-1.5 text-sm text-muted-foreground">{t("activateSub")}</p>
+              <Activate onDone={() => { setMode("login"); setNotice("activated"); }} />
+            </>) : (<>
+            {notice && <div className="mb-5 flex items-start gap-2 rounded-md border border-[hsl(var(--ok)/0.3)] bg-[hsl(var(--ok)/0.08)] px-3 py-2 text-xs text-[hsl(var(--ok))]" data-testid="text-login-notice"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />{t(notice)}</div>}
             <div className="mb-5 grid h-10 w-10 place-items-center rounded-md bg-primary/10 text-primary"><Lock className="h-5 w-5" /></div>
             <h1 className="text-xl font-semibold tracking-tight">{t("loginTitle")}</h1>
             <p className="mt-1.5 text-sm text-muted-foreground">{t("loginSub")}</p>
@@ -67,20 +109,13 @@ export default function Login() {
                 {login.isPending ? t("signingIn") : t("signIn")}<ArrowRight className="h-4 w-4 rtl:rotate-180" />
               </button>
             </form>
+            </>)}
           </div>
-          <div className="rise rise-2 mt-5 rounded-md border bg-card/80 p-4">
-            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"><ShieldCheck className="h-3.5 w-3.5" />{t("demoAccess")}</div>
-            <p className="mt-1 text-xs text-muted-foreground">{t("demoNote")}</p>
-            <div className="mt-3 grid gap-2">
-              {demos.map((d) => (
-                <button key={d.u} type="button" onClick={() => { setU(d.u); setP(d.p); }} data-testid={`button-demo-${d.u}`}
-                  className="flex items-center justify-between rounded-md border px-3 py-2 text-start transition hover:border-primary/40 hover:bg-primary/5">
-                  <span><span className="num block text-xs font-medium">{d.u}</span><span className="text-[11px] text-muted-foreground">{d.label}</span></span>
-                  <span className="num text-[11px] text-muted-foreground">{d.p}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+          {mode === "login" && <div className="rise rise-2 mt-5 rounded-md border bg-card/80 p-4">
+            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"><KeyRound className="h-3.5 w-3.5" />{t("haveInvite")}</div>
+            <p className="mt-1 text-xs text-muted-foreground">{t("activateSub")}</p>
+            <button type="button" onClick={() => { setMode("activate"); setNotice(""); }} data-testid="button-show-activate" className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border text-sm font-medium transition hover:border-primary/40 hover:bg-primary/5">{t("activate")}</button>
+          </div>}
         </div>
       </div>
     </div>

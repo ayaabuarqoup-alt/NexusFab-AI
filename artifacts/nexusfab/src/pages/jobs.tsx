@@ -6,7 +6,7 @@ import {
   useGetSummary, getGetSummaryQueryKey, type Job,
 } from "@workspace/api-client-react";
 import { useI18n, errorMessage } from "@/lib/i18n";
-import { Empty, ErrorState, Field, PageHeader, Panel, Pill, Sk, inputCls, useProtected } from "@/components/common";
+import { Empty, ErrorState, Field, PageHeader, Panel, Pill, Sk, inputCls, useProtected, useRole, PermNote } from "@/components/common";
 import { useToast } from "@/hooks/use-toast";
 
 const stTone = { planned: "mute", running: "info", completed: "warn", dispatched: "ok" } as const;
@@ -17,6 +17,7 @@ function JobForm() {
   const qc = useQueryClient();
   const { toast } = useToast();
   const prot = useProtected();
+  const { canCreate } = useRole();
   const summary = useGetSummary({ query: { queryKey: getGetSummaryQueryKey(), ...prot } });
   const machines = summary.data?.machines ?? [];
   const [f, setF] = useState({ name: "", machineId: "", target: "", startDate: today(), dueDate: today(), startTime: "08:00" });
@@ -37,7 +38,7 @@ function JobForm() {
   };
   return (
     <Panel title={t("newJob")}>
-      <form onSubmit={submit} className="grid gap-3">
+      {!canCreate ? <PermNote>{t("permJobs")}</PermNote> : <form onSubmit={submit} className="grid gap-3">
         <Field label={t("jobName")}><input className={inputCls} maxLength={120} value={f.name} onChange={set("name")} data-testid="input-job-name" /></Field>
         <Field label={t("machine")}>
           <select className={inputCls} value={f.machineId} onChange={set("machineId")} data-testid="select-machine">
@@ -55,7 +56,7 @@ function JobForm() {
         <button disabled={create.isPending} data-testid="button-create-job" className="mt-1 inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary text-sm font-medium text-primary-foreground transition hover:brightness-110 disabled:opacity-70">
           <Plus className="h-4 w-4" />{create.isPending ? t("creating") : t("createJob")}
         </button>
-      </form>
+      </form>}
     </Panel>
   );
 }
@@ -64,14 +65,15 @@ function JobRow({ job, pendingQc }: { job: Job; pendingQc: number }) {
   const { t, nf } = useI18n();
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { canDispatch } = useRole();
   const dispatch = useDispatchJob({ mutation: {
     onSuccess: () => { qc.invalidateQueries({ queryKey: getListJobsQueryKey() }); qc.invalidateQueries({ queryKey: getGetSummaryQueryKey() }); toast({ title: t("dispatched") }); },
     onError: (e) => toast({ title: t("error"), description: errorMessage(e, t), variant: "destructive" }),
   } });
   const pct = Math.min(100, (job.goodQty / job.target) * 100);
   const targetMet = job.goodQty >= job.target;
-  const can = job.status !== "dispatched" && targetMet && pendingQc === 0;
-  const blocker = !targetMet ? t("dispatchBlockedTarget") : pendingQc > 0 ? `${t("dispatchBlockedQc")} (${nf(pendingQc)})` : "";
+  const can = canDispatch && job.status !== "dispatched" && targetMet && pendingQc === 0;
+  const blocker = !canDispatch ? t("permDispatch") : !targetMet ? t("dispatchBlockedTarget") : pendingQc > 0 ? `${t("dispatchBlockedQc")} (${nf(pendingQc)})` : "";
   return (
     <div className="grid gap-3 border-b px-4 py-3 last:border-0 md:grid-cols-[1.6fr_1fr_1.4fr_auto] md:items-center" data-testid={`row-job-${job.id}`}>
       <div className="min-w-0">

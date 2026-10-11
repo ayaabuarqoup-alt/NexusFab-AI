@@ -1,0 +1,267 @@
+import { useState, type FormEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Check, Copy, History, KeyRound, Pencil, RotateCcw, ShieldAlert, UserPlus, X } from "lucide-react";
+import {
+  useChangePassword, useListStaff, getListStaffQueryKey, useInviteStaff, useUpdateStaff, useResetStaffPassword,
+  useListAudit, getListAuditQueryKey, getGetSessionQueryKey, type Invitation, type StaffMember, type StaffInputRole,
+} from "@workspace/api-client-react";
+import { useI18n, errorMessage, type TKey } from "@/lib/i18n";
+import { Empty, ErrorState, Field, PageHeader, Panel, Pill, Sk, inputCls, useAuthed, useRole, broadcastAuth, PermNote } from "@/components/common";
+import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+const ROLES: StaffInputRole[] = ["owner", "operator", "quality_inspector"];
+const btn = "inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:brightness-110 disabled:opacity-60";
+const ghost = "inline-flex items-center gap-1.5 rounded-md border bg-card px-2.5 py-1.5 text-xs font-medium transition hover:bg-secondary disabled:opacity-50";
+
+function useFmt() {
+  const { lang } = useI18n();
+  return (iso: string) => { const d = new Date(iso); return isNaN(d.getTime()) ? iso : d.toLocaleString(lang === "ar" ? "ar-EG" : "en-US", { dateStyle: "medium", timeStyle: "short" }); };
+}
+
+function PasswordPanel({ demo }: { demo: boolean }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const [f, setF] = useState({ cur: "", pw: "", pw2: "" });
+  const [err, setErr] = useState("");
+  const change = useChangePassword({ mutation: { onSuccess: async () => {
+    await qc.cancelQueries();
+    qc.removeQueries({ predicate: (q) => q.queryKey[0] !== getGetSessionQueryKey()[0] });
+    try { sessionStorage.setItem("nf-login-notice", "pwChanged"); } catch { /* ignore */ }
+    qc.setQueryData(getGetSessionQueryKey(), { authenticated: false, factory: "", factoryName: "" });
+    broadcastAuth();
+  } } });
+  const submit = (e: FormEvent) => {
+    e.preventDefault(); setErr("");
+    if (!f.cur || !f.pw) return setErr(t("required"));
+    if (f.pw.length < 12) return setErr(t("pwMin"));
+    if (f.pw !== f.pw2) return setErr(t("pwMismatch"));
+    change.mutate({ data: { currentPassword: f.cur, password: f.pw } });
+  };
+  return (
+    <Panel title={t("pwTitle")} right={<KeyRound className="h-3.5 w-3.5 text-muted-foreground" />}>
+      <p className="mb-4 text-xs text-muted-foreground">{t("pwSub")}</p>
+      <form onSubmit={submit} className="grid gap-3">
+        <fieldset disabled={demo || change.isPending} className="grid gap-3">
+          <Field label={t("currentPw")}><input type="password" autoComplete="current-password" maxLength={256} className={inputCls} value={f.cur} onChange={(e) => setF({ ...f, cur: e.target.value })} data-testid="input-current-password" /></Field>
+          <Field label={t("newPw")}><input type="password" autoComplete="new-password" minLength={12} maxLength={256} className={inputCls} value={f.pw} onChange={(e) => setF({ ...f, pw: e.target.value })} data-testid="input-new-password" /></Field>
+          <span className="-mt-1.5 text-[11px] text-muted-foreground">{t("pwMin")}</span>
+          <Field label={t("confirmPw")}><input type="password" autoComplete="new-password" maxLength={256} className={inputCls} value={f.pw2} onChange={(e) => setF({ ...f, pw2: e.target.value })} data-testid="input-confirm-password" /></Field>
+        </fieldset>
+        {(err || change.isError) && <p className="text-xs text-destructive" data-testid="text-password-error">{err || errorMessage(change.error, t)}</p>}
+        <button disabled={demo || change.isPending} className={btn} data-testid="button-change-password">{change.isPending ? t("pwSaving") : t("pwSave")}</button>
+      </form>
+    </Panel>
+  );
+}
+
+function TokenReveal({ inv, who, onClose }: { inv: Invitation; who: string; onClose: () => void }) {
+  const { t } = useI18n();
+  const fmt = useFmt();
+  const [copied, setCopied] = useState(false);
+  const copy = async () => { try { await navigator.clipboard.writeText(inv.token); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* ignore */ } };
+  return (
+    <div className="rise rounded-md border border-[hsl(32_95%_52%/0.45)] bg-[hsl(32_95%_52%/0.07)] p-4" data-testid="panel-token">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-[hsl(32_80%_38%)]">{t("tokenTitle")} · {who}</div>
+          <p className="mt-1 text-xs text-muted-foreground">{t("tokenBody")}</p>
+        </div>
+        <button onClick={onClose} aria-label={t("dismiss")} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+      </div>
+      <div className="mt-3 flex items-stretch gap-2">
+        <code dir="ltr" className="num flex-1 break-all rounded-md border bg-card px-3 py-2 text-xs" data-testid="text-token">{inv.token}</code>
+        <button onClick={copy} className={ghost} data-testid="button-copy-token">{copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}{copied ? t("copied") : t("copy")}</button>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <span className="text-xs">{t("expires")}: <span className="num font-medium" data-testid="text-token-expiry">{fmt(inv.expiresAt)}</span></span>
+        <button onClick={onClose} className={ghost} data-testid="button-dismiss-token">{t("dismiss")}</button>
+      </div>
+    </div>
+  );
+}
+
+function InviteForm({ onIssued }: { onIssued: (inv: Invitation, who: string) => void }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const [f, setF] = useState<{ username: string; name: string; role: StaffInputRole }>({ username: "", name: "", role: "operator" });
+  const [err, setErr] = useState("");
+  const invite = useInviteStaff({ mutation: { onSuccess: (inv, v) => {
+    qc.invalidateQueries({ queryKey: getListStaffQueryKey() }); qc.invalidateQueries({ queryKey: getListAuditQueryKey() });
+    onIssued(inv, v.data.username); setF({ username: "", name: "", role: "operator" });
+  } } });
+  const submit = (e: FormEvent) => {
+    e.preventDefault(); setErr("");
+    const username = f.username.trim().toLowerCase();
+    if (!username || !f.name.trim()) return setErr(t("required"));
+    if (!/^[a-z0-9_.@-]{3,100}$/.test(username)) return setErr(t("usernameRule"));
+    invite.mutate({ data: { username, name: f.name.trim().slice(0, 100), role: f.role } });
+  };
+  return (
+    <form onSubmit={submit} className="grid gap-3 border-b bg-secondary/30 p-4 md:grid-cols-[1fr_1fr_180px_auto] md:items-end">
+      <Field label={t("staffUsername")}><input dir="ltr" className={`${inputCls} num`} value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} placeholder="a.haddad" data-testid="input-invite-username" /></Field>
+      <Field label={t("fullName")}><input className={inputCls} maxLength={100} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} data-testid="input-invite-name" /></Field>
+      <Field label={t("roleLabel")}>
+        <select className={inputCls} value={f.role} onChange={(e) => setF({ ...f, role: e.target.value as StaffInputRole })} data-testid="select-invite-role">
+          {ROLES.map((r) => <option key={r} value={r}>{t(`role_${r}` as TKey)}</option>)}
+        </select>
+      </Field>
+      <button disabled={invite.isPending} className={btn} data-testid="button-invite"><UserPlus className="h-4 w-4" />{invite.isPending ? t("inviting") : t("invite")}</button>
+      <span className="text-[11px] text-muted-foreground md:col-span-4">{t("usernameRule")}</span>
+      {(err || invite.isError) && <p className="text-xs text-destructive md:col-span-4" data-testid="text-invite-error">{err || errorMessage(invite.error, t)}</p>}
+    </form>
+  );
+}
+
+function StaffRow({ m, self, onIssued }: { m: StaffMember; self: boolean; onIssued: (inv: Invitation, who: string) => void }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [editing, setEditing] = useState(false);
+  const [role, setRole] = useState(m.role);
+  const [active, setActive] = useState(m.active);
+  const [confirm, setConfirm] = useState(false);
+  const refresh = () => { qc.invalidateQueries({ queryKey: getListStaffQueryKey() }); qc.invalidateQueries({ queryKey: getListAuditQueryKey() }); };
+  const update = useUpdateStaff({ mutation: { onSuccess: () => { refresh(); setEditing(false); toast({ title: t("staffSaved") }); } } });
+  const reset = useResetStaffPassword({ mutation: {
+    onSuccess: (inv) => { refresh(); onIssued(inv, m.username); },
+    onError: (e) => toast({ title: t("error"), description: errorMessage(e, t), variant: "destructive" }),
+  } });
+  const initials = m.name.split(/\s+/).map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
+  return (
+    <div className="grid gap-3 border-b px-4 py-3 last:border-0 md:grid-cols-[1.5fr_1fr_1.2fr_auto] md:items-center" data-testid={`row-staff-${m.id}`}>
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-primary/10 text-xs font-semibold text-primary">{initials || "?"}</div>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 truncate font-medium">{m.name}{self && <span className="rounded-sm bg-[hsl(32_95%_52%/0.15)] px-1.5 text-[10px] font-semibold uppercase text-[hsl(32_80%_38%)]">{t("you")}</span>}</div>
+          <div dir="ltr" className="num truncate text-[11px] text-muted-foreground rtl:text-end">{m.username}</div>
+        </div>
+      </div>
+      <div>
+        {editing ? (
+          <select className={inputCls} value={role} onChange={(e) => setRole(e.target.value as StaffMember["role"])} data-testid={`select-role-${m.id}`}>
+            {ROLES.map((r) => <option key={r} value={r}>{t(`role_${r}` as TKey)}</option>)}
+          </select>
+        ) : <span className="text-sm">{t(`role_${m.role}` as TKey)}</span>}
+      </div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {editing ? (
+          <label className="inline-flex items-center gap-2 text-xs"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="h-4 w-4 accent-[hsl(var(--primary))]" data-testid={`checkbox-active-${m.id}`} />{t("activeLbl")}</label>
+        ) : (
+          <>
+            <Pill tone={m.active ? "ok" : "mute"}>{m.active ? t("st_active") : t("st_disabled")}</Pill>
+            <Pill tone={m.activated ? "info" : "warn"}>{m.activated ? t("st_activated") : t("st_pendingAct")}</Pill>
+          </>
+        )}
+      </div>
+      <div className="flex flex-col items-start gap-1 md:items-end">
+        {self ? <span className="max-w-[200px] text-[11px] text-muted-foreground md:text-end">{t("selfNote")}</span> : editing ? (
+          <div className="flex gap-1.5">
+            <button onClick={() => { setEditing(false); setRole(m.role); setActive(m.active); update.reset(); }} className={ghost} data-testid={`button-cancel-${m.id}`}>{t("cancel")}</button>
+            <button onClick={() => update.mutate({ id: m.id, data: { role, active } })} disabled={update.isPending} className={`${ghost} border-primary bg-primary text-primary-foreground hover:bg-primary hover:brightness-110`} data-testid={`button-save-${m.id}`}>{update.isPending ? t("saving") : t("save")}</button>
+          </div>
+        ) : (
+          <div className="flex gap-1.5">
+            <button onClick={() => { setRole(m.role); setActive(m.active); setEditing(true); }} className={ghost} data-testid={`button-edit-${m.id}`}><Pencil className="h-3.5 w-3.5" />{t("edit")}</button>
+            <button onClick={() => setConfirm(true)} disabled={reset.isPending} className={`${ghost} text-destructive hover:bg-destructive/5`} data-testid={`button-reset-${m.id}`}><RotateCcw className="h-3.5 w-3.5" />{t("resetInv")}</button>
+          </div>
+        )}
+        {update.isError && <span className="text-[11px] text-destructive">{errorMessage(update.error, t)}</span>}
+      </div>
+      <AlertDialog open={confirm} onOpenChange={setConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("resetConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{m.name} ({m.username}). {t("resetConfirmBody")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => reset.mutate({ id: m.id })} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" data-testid={`button-confirm-reset-${m.id}`}>{t("resetConfirm")}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+function StaffPanel({ selfId }: { selfId?: string }) {
+  const { t } = useI18n();
+  const authed = useAuthed();
+  const staff = useListStaff({ query: { queryKey: getListStaffQueryKey(), enabled: authed, refetchInterval: 30_000 } });
+  const [issued, setIssued] = useState<{ inv: Invitation; who: string } | null>(null);
+  const onIssued = (inv: Invitation, who: string) => setIssued({ inv, who });
+  return (
+    <Panel title={t("staffTitle")} className="[&>div]:p-0">
+      <p className="px-4 pt-3 text-xs text-muted-foreground">{t("staffSub")}</p>
+      {issued && <div className="p-4 pb-0"><TokenReveal inv={issued.inv} who={issued.who} onClose={() => setIssued(null)} /></div>}
+      <div className="mt-3"><InviteForm onIssued={onIssued} /></div>
+      {staff.isError ? <div className="p-4"><ErrorState error={staff.error} onRetry={() => staff.refetch()} /></div>
+        : !staff.data ? <div className="space-y-2 p-4">{[0, 1, 2].map((i) => <Sk key={i} className="h-12" />)}</div>
+        : staff.data.length === 0 ? <div className="p-4"><Empty title={t("noStaff")} sub={t("noStaffSub")} /></div>
+        : staff.data.map((m) => <StaffRow key={`${m.id}-${m.role}-${m.active}`} m={m} self={m.id === selfId} onIssued={onIssued} />)}
+    </Panel>
+  );
+}
+
+function AuditPanel() {
+  const { t } = useI18n();
+  const fmt = useFmt();
+  const authed = useAuthed();
+  const audit = useListAudit({ query: { queryKey: getListAuditQueryKey(), enabled: authed, refetchInterval: 30_000 } });
+  const label = (a: string) => { const k = `act_${a.replace(/[.\s-]/g, "_")}` as TKey; const v = t(k); return v === undefined || v === k ? a : v; };
+  return (
+    <Panel title={t("auditTitle")} right={<History className="h-3.5 w-3.5 text-muted-foreground" />} className="[&>div]:p-0">
+      <p className="px-4 pt-3 text-xs text-muted-foreground">{t("auditSub")}</p>
+      {audit.isError ? <div className="p-4"><ErrorState error={audit.error} onRetry={() => audit.refetch()} /></div>
+        : !audit.data ? <div className="space-y-2 p-4">{[0, 1, 2, 3].map((i) => <Sk key={i} className="h-10" />)}</div>
+        : audit.data.length === 0 ? <div className="p-4"><Empty title={t("noAudit")} sub={t("noAuditSub")} /></div>
+        : (
+          <ol className="relative mt-3">
+            {audit.data.map((e) => (
+              <li key={e.id} className="grid gap-1 border-t px-4 py-3 md:grid-cols-[170px_1fr_1fr] md:gap-4" data-testid={`row-audit-${e.id}`}>
+                <span className="num text-[11px] text-muted-foreground">{fmt(e.at)}</span>
+                <div className="min-w-0">
+                  <div className="text-sm font-medium">{label(e.action)}</div>
+                  {e.detail && <div className="truncate text-xs text-muted-foreground" title={e.detail}>{e.detail}</div>}
+                </div>
+                <div className="grid gap-0.5 text-xs">
+                  <span><span className="text-muted-foreground">{t("actor")}: </span>{e.actorName || "—"} <span dir="ltr" className="num text-[11px] text-muted-foreground">({e.actorId})</span></span>
+                  {e.targetId && <span><span className="text-muted-foreground">{t("target")}: </span><span dir="ltr" className="num">{e.targetId}</span></span>}
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
+    </Panel>
+  );
+}
+
+export default function Account() {
+  const { t } = useI18n();
+  const { session, role, demo, isOwner } = useRole();
+  return (
+    <div className="space-y-6">
+      <PageHeader title={t("acctTitle")} sub={t("acctSub")} />
+      <div className="rise flex flex-wrap items-center gap-x-6 gap-y-2 rounded-md border bg-card px-4 py-3 text-sm" data-testid="panel-identity">
+        <span><span className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("signedInAs")} </span><span className="font-medium">{session?.userName || session?.factoryName}</span></span>
+        <span><span className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("roleLabel")} </span><span className="font-medium">{t(role ? (`role_${role}` as TKey) : "role_none")}</span></span>
+        <span><span className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("userIdLbl")} </span><span dir="ltr" className="num">{session?.userId || "demo"}</span></span>
+      </div>
+      {demo && (
+        <div className="rise flex items-start gap-3 rounded-md border border-[hsl(var(--warn)/0.35)] bg-[hsl(var(--warn)/0.08)] p-4" data-testid="panel-demo-limit">
+          <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-[hsl(var(--warn))]" />
+          <div><div className="text-sm font-semibold">{t("demoTitle")}</div><p className="mt-1 text-xs text-muted-foreground">{t("demoBody")}</p></div>
+        </div>
+      )}
+      <div className="grid gap-4 lg:grid-cols-[340px_1fr]">
+        <PasswordPanel demo={demo} />
+        {isOwner && !demo ? <StaffPanel selfId={session?.userId} /> : (
+          <Panel title={t("staffTitle")}><PermNote>{demo ? t("err_DEMO_ACCOUNT") : t("ownerOnly")}</PermNote></Panel>
+        )}
+      </div>
+      <AuditPanel />
+    </div>
+  );
+}

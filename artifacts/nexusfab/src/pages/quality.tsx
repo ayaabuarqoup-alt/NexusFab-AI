@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Check, X } from "lucide-react";
 import { useListLogs, getListLogsQueryKey, useReviewQuality, getListJobsQueryKey, getGetSummaryQueryKey, type ProductionLog } from "@workspace/api-client-react";
 import { useI18n, errorMessage } from "@/lib/i18n";
-import { Empty, ErrorState, PageHeader, Panel, Pill, Sk, inputCls, useProtected } from "@/components/common";
+import { Empty, ErrorState, PageHeader, Panel, Pill, Sk, inputCls, useProtected, useRole, PermNote } from "@/components/common";
 import { qcTone } from "@/pages/production";
 import { useToast } from "@/hooks/use-toast";
 
@@ -11,6 +11,7 @@ function ReviewCard({ log }: { log: ProductionLog }) {
   const { t, nf } = useI18n();
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { canReview } = useRole();
   const [note, setNote] = useState("");
   const [err, setErr] = useState("");
   const review = useReviewQuality({ mutation: { onSuccess: () => {
@@ -34,12 +35,14 @@ function ReviewCard({ log }: { log: ProductionLog }) {
           <div key={l} className="bg-card px-2 py-2"><div className="text-[10px] uppercase tracking-wider text-muted-foreground">{l}</div><div className="num font-semibold">{v}</div></div>
         ))}
       </div>
+      {!canReview ? <div className="mt-3"><PermNote>{t("permReview")}</PermNote></div> : <>
       <textarea rows={2} maxLength={500} placeholder={t("notePh")} aria-label={t("note")} value={note} onChange={(e) => setNote(e.target.value)} className={`${inputCls} mt-3 h-auto py-2`} data-testid={`input-note-${log.id}`} />
       {(err || review.isError) && <p className="mt-1 text-xs text-destructive">{err || errorMessage(review.error, t)}</p>}
       <div className="mt-3 grid grid-cols-2 gap-2">
         <button onClick={() => go("rejected")} disabled={review.isPending} data-testid={`button-reject-${log.id}`} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-destructive/40 text-sm font-medium text-destructive transition hover:bg-destructive/5 disabled:opacity-60"><X className="h-4 w-4" />{t("reject")}</button>
         <button onClick={() => go("approved")} disabled={review.isPending} data-testid={`button-approve-${log.id}`} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md bg-primary text-sm font-medium text-primary-foreground transition hover:brightness-110 disabled:opacity-60"><Check className="h-4 w-4" />{t("approve")}</button>
       </div>
+      </>}
     </div>
   );
 }
@@ -72,6 +75,7 @@ export default function Quality() {
                 <span className="text-sm">{l.staff}</span>
                 <span className="num text-xs">{nf(l.goodQty)} / {nf(l.rejects)}</span>
                 <span className="flex-1 truncate text-xs text-muted-foreground md:text-end">{l.qcNote}</span>
+                {(l.reviewerName || l.reviewedBy) && <span className="text-[11px] text-muted-foreground" data-testid={`text-reviewer-${l.id}`}>{t("reviewedBy")}: <span className="font-medium text-foreground">{l.reviewerName || l.reviewedBy}</span>{l.reviewedAt && <span className="num"> · {new Date(l.reviewedAt).toLocaleString()}</span>}</span>}
               </div>
             ))}
           </Panel>

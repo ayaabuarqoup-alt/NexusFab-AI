@@ -28,12 +28,13 @@ export function useProtected() {
 
 export function PageHeader({ title, sub, action }: { title: string; sub: string; action?: ReactNode }) {
   const { t } = useI18n();
+  const { demo } = useRole();
   return (
     <div className="rise flex flex-col gap-3 border-b pb-5 md:flex-row md:items-end md:justify-between">
       <div>
-        <div className="mb-1.5 flex items-center gap-2">
+        {demo && <div className="mb-1.5 flex items-center gap-2">
           <span className="rounded-sm border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent" data-testid="badge-sample">{t("sampleData")}</span>
-        </div>
+        </div>}
         <h1 className="text-2xl font-semibold tracking-tight md:text-[28px]">{title}</h1>
         <p className="mt-1 text-sm text-muted-foreground">{sub}</p>
       </div>
@@ -130,4 +131,25 @@ export function Plot({ data, layout, height = 280, testId }: { data: Plotly.Data
     return () => { if (el) Plotly.purge(el); };
   }, []);
   return <div ref={ref} data-testid={testId} className="w-full" style={{ minHeight: height }} />;
+}
+
+export function useRole() {
+  const { data } = useGetSession({ query: sessionQuery });
+  const role = data?.role || "";
+  const demo = !data?.userId || data.userId === "demo";
+  return {
+    session: data, role, demo,
+    canCreate: role === "owner" || role === "operator",
+    canReview: role === "owner" || role === "quality_inspector",
+    canDispatch: role === "owner",
+    isOwner: role === "owner",
+  };
+}
+
+export function PermNote({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex items-start gap-2 rounded-md border border-[hsl(var(--warn)/0.3)] bg-[hsl(var(--warn)/0.08)] px-3 py-2 text-xs text-[hsl(var(--warn))]" data-testid="text-permission">
+      <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /><span>{children}</span>
+    </div>
+  );
 }

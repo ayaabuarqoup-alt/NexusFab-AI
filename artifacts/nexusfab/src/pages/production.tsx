@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { useListJobs, getListJobsQueryKey, useListLogs, getListLogsQueryKey, useCreateLog, getGetSummaryQueryKey } from "@workspace/api-client-react";
 import { useI18n, errorMessage } from "@/lib/i18n";
-import { Empty, ErrorState, Field, PageHeader, Panel, Pill, Sk, inputCls, useProtected } from "@/components/common";
+import { Empty, ErrorState, Field, PageHeader, Panel, Pill, Sk, inputCls, useProtected, useRole, PermNote } from "@/components/common";
 import { useToast } from "@/hooks/use-toast";
 
 export const qcTone = { pending: "warn", approved: "ok", rejected: "bad" } as const;
@@ -14,10 +14,12 @@ export default function Production() {
   const qc = useQueryClient();
   const { toast } = useToast();
   const prot = useProtected();
+  const { canCreate, session } = useRole();
+  const me = session?.userName || session?.factoryName || "staff";
   const jobs = useListJobs({ query: { queryKey: getListJobsQueryKey(), ...prot } });
   const logs = useListLogs({ query: { queryKey: getListLogsQueryKey(), ...prot } });
   const open = (jobs.data ?? []).filter((j) => j.status !== "dispatched");
-  const [f, setF] = useState({ jobId: "", staff: "", ...now(), goodQty: "", rejects: "0", downtimeMinutes: "0", reason: "" });
+  const [f, setF] = useState({ jobId: "", ...now(), goodQty: "", rejects: "0", downtimeMinutes: "0", reason: "" });
   const [err, setErr] = useState("");
   const create = useCreateLog({ mutation: { onSuccess: () => {
     [getListLogsQueryKey(), getListJobsQueryKey(), getGetSummaryQueryKey()].forEach((queryKey) => qc.invalidateQueries({ queryKey }));
@@ -27,9 +29,9 @@ export default function Production() {
   const submit = (e: FormEvent) => {
     e.preventDefault(); setErr("");
     const g = Number(f.goodQty), r = Number(f.rejects), d = Number(f.downtimeMinutes);
-    if (!f.jobId || !f.staff.trim() || f.goodQty === "") return setErr(t("required"));
+    if (!f.jobId || f.goodQty === "") return setErr(t("required"));
     if (![g, r, d].every((n) => Number.isFinite(n) && n >= 0) || d > 1440) return setErr(t("mustBePositive"));
-    create.mutate({ data: { jobId: f.jobId, staff: f.staff.trim(), date: f.date, time: f.time, goodQty: Math.round(g), rejects: Math.round(r), downtimeMinutes: Math.round(d), reason: f.reason.trim() } });
+    create.mutate({ data: { jobId: f.jobId, staff: me.slice(0, 80), date: f.date, time: f.time, goodQty: Math.round(g), rejects: Math.round(r), downtimeMinutes: Math.round(d), reason: f.reason.trim() } });
   };
   const jobName = (id: string) => jobs.data?.find((j) => j.id === id)?.name ?? id;
 
@@ -38,7 +40,7 @@ export default function Production() {
       <PageHeader title={t("prodTitle")} sub={t("prodSub")} />
       <div className="grid gap-4 lg:grid-cols-[340px_1fr]">
         <Panel title={t("newLog")}>
-          {jobs.data && open.length === 0 ? <Empty title={t("noJobs")} sub={t("needJob")} /> : (
+          {!canCreate ? <PermNote>{t("permLogs")}</PermNote> : jobs.data && open.length === 0 ? <Empty title={t("noJobs")} sub={t("needJob")} /> : (
             <form onSubmit={submit} className="grid gap-3">
               <Field label={t("job")}>
                 <select className={inputCls} value={f.jobId} onChange={set("jobId")} data-testid="select-job">
@@ -46,7 +48,7 @@ export default function Production() {
                   {open.map((j) => <option key={j.id} value={j.id}>{j.name} · {j.machineId.toUpperCase()}</option>)}
                 </select>
               </Field>
-              <Field label={t("staff")}><input className={inputCls} maxLength={80} value={f.staff} onChange={set("staff")} data-testid="input-staff" /></Field>
+              <div className="flex items-center justify-between rounded-md border bg-secondary/40 px-3 py-2 text-xs" data-testid="text-log-identity"><span className="text-muted-foreground">{t("loggedAs")}</span><span className="font-medium">{me}</span></div>
               <div className="grid grid-cols-2 gap-3">
                 <Field label={t("date")}><input type="date" lang={lang} className={inputCls} value={f.date} onChange={set("date")} required data-testid="input-date" /></Field>
                 <Field label={t("time")}><input type="time" lang={lang} className={inputCls} value={f.time} onChange={set("time")} required data-testid="input-time" /></Field>

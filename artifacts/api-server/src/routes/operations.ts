@@ -5,8 +5,8 @@ import {
   ReviewQualityParams, ReviewQualityResponse, DispatchJobParams, DispatchJobResponse,
   ListJobsResponse, ListLogsResponse, GetSummaryResponse, AskAnalystBody, AskAnalystResponse,
 } from "@workspace/api-zod";
-import { requireFactory } from "../middlewares/factory-auth";
-import { loadVault, mutateVault, type Job, type Log } from "../lib/vault";
+import { requireFactory, requireRoles } from "../middlewares/factory-auth";
+import { audit, loadVault, mutateVault, type Job, type Log } from "../lib/vault";
 import { analyze, summarize } from "../lib/analytics";
 
 export class OperationError extends Error {
@@ -14,6 +14,7 @@ export class OperationError extends Error {
 }
 const router = Router();
 router.use(requireFactory);
+router.get("/audit", async (_req,res) => { res.json((await loadVault(res.locals.factory)).audit ?? []); });
 function validDate(s: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
   const d = new Date(s + "T00:00:00Z");
@@ -29,7 +30,7 @@ router.get("/jobs", async (_req, res): Promise<void> => {
 router.get("/logs", async (_req, res): Promise<void> => {
   res.json(ListLogsResponse.parse((await loadVault(res.locals.factory)).logs));
 });
-router.post("/jobs", async (req, res): Promise<void> => {
+router.post("/jobs", requireRoles("owner","operator"), async (req, res): Promise<void> => {
   const parsed = CreateJobBody.safeParse(req.body);
   if (!parsed.success) throw new OperationError("INVALID_INPUT");
   const data = parsed.data;
@@ -37,11 +38,12 @@ router.post("/jobs", async (req, res): Promise<void> => {
   if (!validDate(data.startDate) || !validDate(data.dueDate) || !validTime(data.startTime) || data.dueDate < data.startDate) throw new OperationError("INVALID_DATE");
   const result = await mutateVault(res.locals.factory, v => {
     const job: Job = { ...data, name: data.name.trim(), id: randomUUID(), status: "planned", goodQty: 0, rejects: 0 };
+    audit(v,{userId:res.locals.userId,userName:res.locals.userName},"job_created",job.id);
     v.jobs.unshift(job); return job;
-  });
+  }, {userId:res.locals.userId,roles:["owner","operator"]});
   res.json(CreateJobResponse.parse(result));
 });
-router.post("/logs", async (req, res): Promise<void> => {
+router.post("/logs", requireRoles("owner","operator"), async (req, res): Promise<void> => {
   const parsed = CreateLogBody.safeParse(req.body);
   if (!parsed.success) throw new OperationError("INVALID_INPUT");
   const data = parsed.data;
@@ -54,26 +56,32 @@ router.post("/logs", async (req, res): Promise<void> => {
     if (!job) throw new OperationError("NOT_FOUND", 404);
     if (job.status === "dispatched") throw new OperationError("ALREADY_DISPATCHED", 409);
     if (data.date < job.startDate) throw new OperationError("INVALID_DATE");
-    const log: Log = { ...data, id: randomUUID(), machineId: job.machineId, qcStatus: "pending", qcNote: "", createdAt: new Date().toISOString() };
+    const log: Log = { ...data, staff: res.locals.userName, createdBy: res.locals.userId, id: randomUUID(), machineId: job.machineId, qcStatus: "pending", qcNote: "", createdAt: new Date().toISOString() };
     job.goodQty += data.goodQty; job.rejects += data.rejects;
     if (!Number.isSafeInteger(job.goodQty) || !Number.isSafeInteger(job.rejects)) throw new OperationError("INVALID_INPUT");
     job.status = job.goodQty >= job.target ? "completed" : "running";
+    audit(v,{userId:res.locals.userId,userName:res.locals.userName},"log_created",log.id);
+    // Validate before committing so a contract mismatch cannot poison the vault.
+    CreateLogResponse.parse(log);
     v.logs.unshift(log); return log;
-  });
+  }, {userId:res.locals.userId,roles:["owner","operator"]});
   res.json(CreateLogResponse.parse(result));
 });
-router.patch("/logs/:id/quality", async (req, res): Promise<void> => {
+router.patch("/logs/:id/quality", requireRoles("owner","quality_inspector"), async (req, res): Promise<void> => {
   const parsed = ReviewQualityBody.safeParse(req.body), params = ReviewQualityParams.safeParse(req.params);
   if (!parsed.success || !params.success || !parsed.data.note.trim()) throw new OperationError("INVALID_INPUT");
   const result = await mutateVault(res.locals.factory, v => {
     const log = v.logs.find(l => l.id === params.data.id);
     if (!log) throw new OperationError("NOT_FOUND", 404);
     if (log.qcStatus !== "pending") throw new OperationError("ALREADY_REVIEWED", 409);
-    log.qcStatus = parsed.data.status; log.qcNote = parsed.data.note.trim(); return log;
-  });
+    log.qcStatus = parsed.data.status; log.qcNote = parsed.data.note.trim();
+    log.reviewedBy = res.locals.userId; log.reviewerName = res.locals.userName; log.reviewedAt = new Date().toISOString();
+    audit(v,{userId:res.locals.userId,userName:res.locals.userName},"quality_reviewed",log.id,`${log.qcStatus}: ${log.qcNote}`);
+    return log;
+  }, {userId:res.locals.userId,roles:["owner","quality_inspector"]});
   res.json(ReviewQualityResponse.parse(result));
 });
-router.post("/jobs/:id/dispatch", async (req, res): Promise<void> => {
+router.post("/jobs/:id/dispatch", requireRoles("owner"), async (req, res): Promise<void> => {
   const params = DispatchJobParams.safeParse(req.params);
   if (!params.success) throw new OperationError("INVALID_INPUT");
   const result = await mutateVault(res.locals.factory, v => {
@@ -82,8 +90,10 @@ router.post("/jobs/:id/dispatch", async (req, res): Promise<void> => {
     if (job.status === "dispatched") throw new OperationError("ALREADY_DISPATCHED", 409);
     const logs = v.logs.filter(l => l.jobId === job.id);
     if (job.goodQty < job.target || !logs.length || logs.some(l => l.qcStatus !== "approved")) throw new OperationError("QUALITY_REQUIRED", 409);
-    job.status = "dispatched"; return job;
-  });
+    job.status = "dispatched";
+    audit(v,{userId:res.locals.userId,userName:res.locals.userName},"job_dispatched",job.id);
+    return job;
+  }, {userId:res.locals.userId,roles:["owner"]});
   res.json(DispatchJobResponse.parse(result));
 });
 router.post("/analyst", async (req, res): Promise<void> => {

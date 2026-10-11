@@ -7,12 +7,112 @@
 import * as zod from 'zod';
 
 
+export const activateAccountBodyTokenRegExp = new RegExp('^[a-f0-9]{64}$');
+export const activateAccountBodyPasswordMin = 12;
+export const activateAccountBodyPasswordMax = 256;
+
+
+
+export const ActivateAccountBody = zod.object({
+  "token": zod.string().regex(activateAccountBodyTokenRegExp),
+  "password": zod.string().min(activateAccountBodyPasswordMin).max(activateAccountBodyPasswordMax)
+})
+
+export const ActivateAccountResponse = zod.object({
+  "message": zod.string()
+})
+
+
+export const changePasswordBodyCurrentPasswordMax = 256;
+
+export const changePasswordBodyPasswordMin = 12;
+export const changePasswordBodyPasswordMax = 256;
+
+
+
+export const ChangePasswordBody = zod.object({
+  "currentPassword": zod.string().max(changePasswordBodyCurrentPasswordMax),
+  "password": zod.string().min(changePasswordBodyPasswordMin).max(changePasswordBodyPasswordMax)
+})
+
+export const ChangePasswordResponse = zod.object({
+  "message": zod.string()
+})
+
+
+export const ListStaffResponseItem = zod.object({
+  "id": zod.string(),
+  "username": zod.string(),
+  "name": zod.string(),
+  "role": zod.enum(['owner', 'operator', 'quality_inspector']),
+  "active": zod.boolean(),
+  "activated": zod.boolean()
+})
+export const ListStaffResponse = zod.array(ListStaffResponseItem)
+
+
+export const inviteStaffBodyUsernameRegExp = new RegExp('^[a-z0-9_.@-]{3,100}$');
+export const inviteStaffBodyNameMax = 100;
+
+
+
+export const InviteStaffBody = zod.object({
+  "username": zod.string().regex(inviteStaffBodyUsernameRegExp),
+  "name": zod.string().min(1).max(inviteStaffBodyNameMax),
+  "role": zod.enum(['owner', 'operator', 'quality_inspector'])
+})
+
+export const InviteStaffResponse = zod.object({
+  "token": zod.string(),
+  "expiresAt": zod.string()
+})
+
+
+export const UpdateStaffParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateStaffBody = zod.object({
+  "role": zod.enum(['owner', 'operator', 'quality_inspector']),
+  "active": zod.boolean()
+})
+
+export const UpdateStaffResponse = zod.object({
+  "message": zod.string()
+})
+
+
+export const ResetStaffPasswordParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const ResetStaffPasswordResponse = zod.object({
+  "token": zod.string(),
+  "expiresAt": zod.string()
+})
+
+
+export const ListAuditResponseItem = zod.object({
+  "id": zod.string(),
+  "actorId": zod.string(),
+  "actorName": zod.string(),
+  "action": zod.string(),
+  "targetId": zod.string(),
+  "at": zod.string(),
+  "detail": zod.string()
+})
+export const ListAuditResponse = zod.array(ListAuditResponseItem)
+
+
 export const HealthCheckResponse = zod.object({
   "status": zod.string()
 })
 
 
 export const GetSessionResponse = zod.object({
+  "userId": zod.string().optional(),
+  "userName": zod.string().optional(),
+  "role": zod.enum(['owner', 'operator', 'quality_inspector', '']).optional(),
   "authenticated": zod.boolean(),
   "factory": zod.string(),
   "factoryName": zod.string()
@@ -25,6 +125,9 @@ export const LoginBody = zod.object({
 })
 
 export const LoginResponse = zod.object({
+  "userId": zod.string().optional(),
+  "userName": zod.string().optional(),
+  "role": zod.enum(['owner', 'operator', 'quality_inspector', '']).optional(),
   "authenticated": zod.boolean(),
   "factory": zod.string(),
   "factoryName": zod.string()
@@ -169,7 +272,7 @@ export const DispatchJobResponse = zod.object({
 })
 
 
-export const listLogsResponseStaffMax = 80;
+export const listLogsResponseStaffMax = 100;
 
 export const listLogsResponseGoodQtyMin = 0;
 
@@ -195,12 +298,16 @@ export const ListLogsResponseItem = zod.object({
   "machineId": zod.string(),
   "qcStatus": zod.enum(['pending', 'approved', 'rejected']),
   "qcNote": zod.string(),
+  "createdBy": zod.string().optional(),
+  "reviewedBy": zod.string().optional(),
+  "reviewerName": zod.string().optional(),
+  "reviewedAt": zod.string().optional(),
   "createdAt": zod.string()
 })
 export const ListLogsResponse = zod.array(ListLogsResponseItem)
 
 
-export const createLogBodyStaffMax = 80;
+export const createLogBodyStaffMax = 100;
 
 export const createLogBodyGoodQtyMin = 0;
 
@@ -224,7 +331,7 @@ export const CreateLogBody = zod.object({
   "reason": zod.string().max(createLogBodyReasonMax)
 })
 
-export const createLogResponseStaffMax = 80;
+export const createLogResponseStaffMax = 100;
 
 export const createLogResponseGoodQtyMin = 0;
 
@@ -250,6 +357,10 @@ export const CreateLogResponse = zod.object({
   "machineId": zod.string(),
   "qcStatus": zod.enum(['pending', 'approved', 'rejected']),
   "qcNote": zod.string(),
+  "createdBy": zod.string().optional(),
+  "reviewedBy": zod.string().optional(),
+  "reviewerName": zod.string().optional(),
+  "reviewedAt": zod.string().optional(),
   "createdAt": zod.string()
 })
 
@@ -267,7 +378,7 @@ export const ReviewQualityBody = zod.object({
   "note": zod.string().min(1).max(reviewQualityBodyNoteMax)
 })
 
-export const reviewQualityResponseStaffMax = 80;
+export const reviewQualityResponseStaffMax = 100;
 
 export const reviewQualityResponseGoodQtyMin = 0;
 
@@ -293,6 +404,10 @@ export const ReviewQualityResponse = zod.object({
   "machineId": zod.string(),
   "qcStatus": zod.enum(['pending', 'approved', 'rejected']),
   "qcNote": zod.string(),
+  "createdBy": zod.string().optional(),
+  "reviewedBy": zod.string().optional(),
+  "reviewerName": zod.string().optional(),
+  "reviewedAt": zod.string().optional(),
   "createdAt": zod.string()
 })
 

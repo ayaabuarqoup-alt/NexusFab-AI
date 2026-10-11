@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { seedFactories } from "./lib/vault";
+import { migrateAccounts } from "./lib/accounts";
 
 const rawPort = process.env["PORT"];
 
@@ -16,6 +17,7 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
+await migrateAccounts();
 await seedFactories();
 app.listen(port, (err) => {
   if (err) {

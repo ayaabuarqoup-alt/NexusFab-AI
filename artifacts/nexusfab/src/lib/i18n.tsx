@@ -1,11 +1,13 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { enX, arX } from "./i18n-account";
 
 export type Lang = "en" | "ar";
 
 const en = {
+  ...enX,
   appName: "NexusFab AI", tagline: "Manufacturing operating system",
   loginTitle: "Sign in to your factory vault", loginSub: "Each factory operates in an isolated data vault. Your logs and metrics are never visible to another tenant.",
-  username: "Factory username", password: "Password", signIn: "Sign in", signingIn: "Verifying credentials",
+  username: "Staff username", password: "Password", signIn: "Sign in", signingIn: "Verifying credentials",
   demoAccess: "Demo access", demoNote: "Sample factories with seeded sample data. Click to fill.",
   loginPitch: "One reliable view of production, leakage and quality.",
   loginPoint1: "Financial leakage computed from every stoppage and reject",
@@ -49,9 +51,10 @@ const en = {
 };
 type Dict = typeof en;
 const ar: Dict = {
+  ...arX,
   appName: "نكسس فاب AI", tagline: "نظام تشغيل التصنيع",
   loginTitle: "تسجيل الدخول إلى خزنة المصنع", loginSub: "يعمل كل مصنع في خزنة بيانات معزولة. سجلاتك ومؤشراتك لا تظهر لأي مستأجر آخر.",
-  username: "اسم مستخدم المصنع", password: "كلمة المرور", signIn: "تسجيل الدخول", signingIn: "جارٍ التحقق",
+  username: "اسم مستخدم الموظف", password: "كلمة المرور", signIn: "تسجيل الدخول", signingIn: "جارٍ التحقق",
   demoAccess: "دخول تجريبي", demoNote: "مصانع نموذجية ببيانات عينة. انقر للتعبئة.",
   loginPitch: "رؤية واحدة موثوقة للإنتاج والتسرب والجودة.",
   loginPoint1: "حساب التسرب المالي من كل توقف ومرفوض", loginPoint2: "بوابة جودة إلزامية قبل أي شحن", loginPoint3: "مؤشرات إجهاد تقديرية لكل آلة",

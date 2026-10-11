@@ -1,9 +1,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useQueryClient, useIsFetching } from "@tanstack/react-query";
-import { Activity, Bot, ClipboardCheck, Factory, Gauge, LayoutDashboard, ListChecks, LogOut, Menu, RotateCw, X } from "lucide-react";
+import { Activity, Bot, ClipboardCheck, Factory, Gauge, LayoutDashboard, ListChecks, LogOut, UserCog, Menu, RotateCw, X } from "lucide-react";
 import { useGetSession, getGetSessionQueryKey, useGetSummary, getGetSummaryQueryKey, useLogout } from "@workspace/api-client-react";
-import { useI18n, type TKey } from "@/lib/i18n";
+import { useI18n, errorMessage, type TKey } from "@/lib/i18n";
+import { useToast } from "@/hooks/use-toast";
 import { REFRESH_MS, useProtected, sessionQuery, broadcastAuth } from "@/components/common";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +15,7 @@ const nav: { href: string; key: TKey; icon: typeof Gauge }[] = [
   { href: "/quality", key: "nav_quality", icon: ClipboardCheck },
   { href: "/machines", key: "nav_machines", icon: Gauge },
   { href: "/copilot", key: "nav_copilot", icon: Bot },
+  { href: "/account", key: "nav_account", icon: UserCog },
 ];
 
 export function usePageMeta(title: string) {
@@ -76,7 +78,13 @@ export function Shell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const qc = useQueryClient();
   const { data: session } = useGetSession({ query: sessionQuery });
-  const logout = useLogout({ mutation: { onSettled: () => { qc.clear(); qc.setQueryData(getGetSessionQueryKey(), { authenticated: false, factory: "", factoryName: "" }); broadcastAuth(); } } });
+  const { toast } = useToast();
+  const logout = useLogout({ mutation: { onError: (error) => toast({title:t("error"),description:errorMessage(error,t),variant:"destructive"}), onSuccess: async () => {
+    await qc.cancelQueries();
+    qc.removeQueries({ predicate: (q) => q.queryKey[0] !== getGetSessionQueryKey()[0] });
+    qc.setQueryData(getGetSessionQueryKey(), { authenticated: false, factory: "", factoryName: "" });
+    broadcastAuth();
+  } } });
   useEffect(() => setOpen(false), [loc]);
   const navKey = nav.find((n) => n.href === loc)?.key;
   usePageMeta(navKey ? t(navKey) : t("notFound"));
@@ -94,6 +102,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <div className="text-[10px] uppercase tracking-wider text-sidebar-foreground/55">{t("tenant")}</div>
         <div className="truncate text-sm font-medium text-white" data-testid="text-factory">{session?.factoryName}</div>
         <div className="num truncate text-[11px] text-sidebar-foreground/55">{session?.factory}</div>
+        {session?.userName && <div className="mt-2 flex items-center justify-between gap-2 border-t border-sidebar-border pt-2"><span className="truncate text-xs text-white" data-testid="text-user">{session.userName}</span><span className="shrink-0 rounded-sm bg-sidebar-accent px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-[hsl(32_95%_60%)]" data-testid="text-role">{t(session.role ? `role_${session.role}` : "role_none")}</span></div>}
       </div>
       <nav className="flex flex-col gap-0.5">
         {nav.map(({ href, key, icon: I }) => {

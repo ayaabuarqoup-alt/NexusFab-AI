@@ -4,8 +4,12 @@
  * Api
  * OpenAPI spec version: 1.0.0
  */
+import type { SessionRole } from './sessionRole';
 
 export interface Session {
+  userId?: string;
+  userName?: string;
+  role?: SessionRole;
   authenticated: boolean;
   factory: string;
   factoryName: string;

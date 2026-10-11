@@ -10,6 +10,25 @@
     }
   ],
   "paths": {
+    "/auth/activate": {
+      "post": { "operationId": "activateAccount", "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ActivationInput" } } } }, "responses": { "200": { "description": "Activated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Message" } } } } } }
+    },
+    "/auth/password": {
+      "post": { "operationId": "changePassword", "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PasswordInput" } } } }, "responses": { "200": { "description": "Changed", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Message" } } } } } }
+    },
+    "/staff": {
+      "get": { "operationId": "listStaff", "responses": { "200": { "description": "Staff", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/StaffMember" } } } } } } },
+      "post": { "operationId": "inviteStaff", "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StaffInput" } } } }, "responses": { "200": { "description": "One-time invitation", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Invitation" } } } } } }
+    },
+    "/staff/{id}": {
+      "patch": { "operationId": "updateStaff", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StaffUpdate" } } } }, "responses": { "200": { "description": "Updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Message" } } } } } }
+    },
+    "/staff/{id}/reset": {
+      "post": { "operationId": "resetStaffPassword", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "One-time recovery invitation", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Invitation" } } } } } }
+    },
+    "/audit": {
+      "get": { "operationId": "listAudit", "responses": { "200": { "description": "Audit history", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/AuditEvent" } } } } } } }
+    },
     "/healthz": {
       "get": {
         "operationId": "healthCheck",
@@ -289,6 +308,13 @@
   },
   "components": {
     "schemas": {
+      "Invitation": { "type": "object", "required": ["token", "expiresAt"], "properties": { "token": { "type": "string" }, "expiresAt": { "type": "string" } } },
+      "ActivationInput": { "type": "object", "required": ["token", "password"], "properties": { "token": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "password": { "type": "string", "minLength": 12, "maxLength": 256 } } },
+      "PasswordInput": { "type": "object", "required": ["currentPassword", "password"], "properties": { "currentPassword": { "type": "string", "maxLength": 256 }, "password": { "type": "string", "minLength": 12, "maxLength": 256 } } },
+      "StaffInput": { "type": "object", "required": ["username", "name", "role"], "properties": { "username": { "type": "string", "pattern": "^[a-z0-9_.@-]{3,100}$" }, "name": { "type": "string", "minLength": 1, "maxLength": 100 }, "role": { "type": "string", "enum": ["owner", "operator", "quality_inspector"] } } },
+      "StaffUpdate": { "type": "object", "required": ["role", "active"], "properties": { "role": { "type": "string", "enum": ["owner", "operator", "quality_inspector"] }, "active": { "type": "boolean" } } },
+      "StaffMember": { "type": "object", "required": ["id", "username", "name", "role", "active", "activated"], "properties": { "id": { "type": "string" }, "username": { "type": "string" }, "name": { "type": "string" }, "role": { "type": "string", "enum": ["owner", "operator", "quality_inspector"] }, "active": { "type": "boolean" }, "activated": { "type": "boolean" } } },
+      "AuditEvent": { "type": "object", "required": ["id", "actorId", "actorName", "action", "targetId", "at", "detail"], "properties": { "id": { "type": "string" }, "actorId": { "type": "string" }, "actorName": { "type": "string" }, "action": { "type": "string" }, "targetId": { "type": "string" }, "at": { "type": "string" }, "detail": { "type": "string" } } },
       "HealthStatus": {
         "type": "object",
         "required": [
@@ -308,6 +334,9 @@
           "factoryName"
         ],
         "properties": {
+          "userId": { "type": "string" },
+          "userName": { "type": "string" },
+          "role": { "type": "string", "enum": ["owner", "operator", "quality_inspector", ""] },
           "authenticated": {
             "type": "boolean"
           },
@@ -445,7 +474,7 @@
           "staff": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 80
+            "maxLength": 100
           },
           "date": {
             "type": "string"
@@ -499,7 +528,7 @@
           "staff": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 80
+            "maxLength": 100
           },
           "date": {
             "type": "string"
@@ -538,6 +567,10 @@
           "qcNote": {
             "type": "string"
           },
+          "createdBy": { "type": "string" },
+          "reviewedBy": { "type": "string" },
+          "reviewerName": { "type": "string" },
+          "reviewedAt": { "type": "string" },
           "createdAt": {
             "type": "string"
           }

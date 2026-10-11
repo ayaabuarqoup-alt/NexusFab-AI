@@ -4,11 +4,111 @@
  * Api
  * OpenAPI spec version: 1.0.0
  */
+export interface Invitation {
+  token: string;
+  expiresAt: string;
+}
+
+export interface ActivationInput {
+  /** @pattern ^[a-f0-9]{64}$ */
+  token: string;
+  /**
+     * @minLength 12
+     * @maxLength 256
+     */
+  password: string;
+}
+
+export interface PasswordInput {
+  /** @maxLength 256 */
+  currentPassword: string;
+  /**
+     * @minLength 12
+     * @maxLength 256
+     */
+  password: string;
+}
+
+export type StaffInputRole = typeof StaffInputRole[keyof typeof StaffInputRole];
+
+
+export const StaffInputRole = {
+  owner: 'owner',
+  operator: 'operator',
+  quality_inspector: 'quality_inspector',
+} as const;
+
+export interface StaffInput {
+  /** @pattern ^[a-z0-9_.@-]{3,100}$ */
+  username: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name: string;
+  role: StaffInputRole;
+}
+
+export type StaffUpdateRole = typeof StaffUpdateRole[keyof typeof StaffUpdateRole];
+
+
+export const StaffUpdateRole = {
+  owner: 'owner',
+  operator: 'operator',
+  quality_inspector: 'quality_inspector',
+} as const;
+
+export interface StaffUpdate {
+  role: StaffUpdateRole;
+  active: boolean;
+}
+
+export type StaffMemberRole = typeof StaffMemberRole[keyof typeof StaffMemberRole];
+
+
+export const StaffMemberRole = {
+  owner: 'owner',
+  operator: 'operator',
+  quality_inspector: 'quality_inspector',
+} as const;
+
+export interface StaffMember {
+  id: string;
+  username: string;
+  name: string;
+  role: StaffMemberRole;
+  active: boolean;
+  activated: boolean;
+}
+
+export interface AuditEvent {
+  id: string;
+  actorId: string;
+  actorName: string;
+  action: string;
+  targetId: string;
+  at: string;
+  detail: string;
+}
+
 export interface HealthStatus {
   status: string;
 }
 
+export type SessionRole = typeof SessionRole[keyof typeof SessionRole];
+
+
+export const SessionRole = {
+  owner: 'owner',
+  operator: 'operator',
+  quality_inspector: 'quality_inspector',
+  '': '',
+} as const;
+
 export interface Session {
+  userId?: string;
+  userName?: string;
+  role?: SessionRole;
   authenticated: boolean;
   factory: string;
   factoryName: string;
@@ -67,7 +167,7 @@ export interface LogInput {
   jobId: string;
   /**
      * @minLength 1
-     * @maxLength 80
+     * @maxLength 100
      */
   staff: string;
   date: string;
@@ -99,7 +199,7 @@ export interface ProductionLog {
   jobId: string;
   /**
      * @minLength 1
-     * @maxLength 80
+     * @maxLength 100
      */
   staff: string;
   date: string;
@@ -118,6 +218,10 @@ export interface ProductionLog {
   machineId: string;
   qcStatus: ProductionLogQcStatus;
   qcNote: string;
+  createdBy?: string;
+  reviewedBy?: string;
+  reviewerName?: string;
+  reviewedAt?: string;
   createdAt: string;
 }
 

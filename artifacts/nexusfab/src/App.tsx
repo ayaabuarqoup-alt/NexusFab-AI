@@ -16,6 +16,7 @@ import Production from '@/pages/production';
 import Quality from '@/pages/quality';
 import Machines from '@/pages/machines';
 import Copilot from '@/pages/copilot';
+import Account from '@/pages/account';
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } } });
 
@@ -33,11 +34,11 @@ function NotFound() {
 function Gate() {
   const qc = useQueryClient();
   const s = useGetSession({ query: sessionQuery });
-  useEffect(() => onAuthBroadcast(() => { qc.removeQueries({ predicate: (q) => q.queryKey[0] !== getGetSessionQueryKey()[0] }); qc.invalidateQueries({ queryKey: getGetSessionQueryKey() }); }), [qc]);
-  const tenant = s.data?.authenticated ? s.data.factory : '';
+  useEffect(() => onAuthBroadcast(() => { qc.resetQueries({ predicate: (q) => q.queryKey[0] !== getGetSessionQueryKey()[0] }); qc.invalidateQueries({ queryKey: getGetSessionQueryKey() }); }), [qc]);
+  const tenant = s.data?.authenticated ? `${s.data.factory}::${s.data.userId ?? ''}` : '';
   const prevTenant = useRef<string | null>(null);
   useEffect(() => {
-    if (prevTenant.current !== null && prevTenant.current !== tenant) qc.removeQueries({ predicate: (q) => q.queryKey[0] !== getGetSessionQueryKey()[0] });
+    if (prevTenant.current !== null && prevTenant.current !== tenant) qc.resetQueries({ predicate: (q) => q.queryKey[0] !== getGetSessionQueryKey()[0] });
     prevTenant.current = tenant;
   }, [tenant, qc]);
   if (s.isLoading) return (
@@ -48,7 +49,7 @@ function Gate() {
   if (s.isError) return <div className="mx-auto max-w-md p-8"><ErrorState error={s.error} onRetry={() => s.refetch()} /></div>;
   if (!s.data?.authenticated) return <Login />;
   return (
-    <Shell>
+    <Shell key={tenant}>
       <RoutedErrorBoundary>
         <Switch>
           <Route path="/" component={Dashboard} />
@@ -57,6 +58,7 @@ function Gate() {
           <Route path="/quality" component={Quality} />
           <Route path="/machines" component={Machines} />
           <Route path="/copilot" component={Copilot} />
+          <Route path="/account" component={Account} />
           <Route component={NotFound} />
         </Switch>
       </RoutedErrorBoundary>

@@ -1,0 +1,30 @@
+Create a high-quality, production-ready Multi-Tenant Manufacturing OS Web Application named "NexusFab AI" using Python and Streamlit. The system must replace spreadsheets with a centralized "One Reliable View" while ensuring total data privacy, a highly corporate UI, and full English/Arabic toggling.
+
+Generate the codebase exactly as follows:
+
+1. Dynamic Themes & Corporate UI (.streamlit/config.toml):
+   Configure a professional corporate theme with the following industrial palette:
+   - primaryColor = "#1E3A8A" (Deep Midnight Blue for enterprise trust and buttons)
+   - backgroundColor = "#F8FAFC" (Soft Ice-Grey to reduce eye strain)
+   - secondaryBackgroundColor = "#E2E8F0" (Medium Grey for sidebars and input fields)
+   - textColor = "#0F172A" (High-contrast Navy-Black for distant text readability)
+
+2. Core Functional Requirements (Based on the Case Challenge):
+   - Secure Multi-Tenancy & Data Isolation: Implement a secure login gateway where each factory (e.g., factory_carton with password 'password123', and factory_plastics with password 'secure456') logs into its own completely isolated encrypted data vault. No tenant can ever access or view another factory's logs or metrics.
+   - Universal & Scalable Design: Use flexible manufacturing terms ("Units", "Good Qty", "Rejects", "Stoppages") instead of specific product words, making it a general SaaS platform that fits carton, printing, plastics, or packaging factories.
+   - Calendar Integration (Native Pickers): All job creation, deadlines, and operators' logs must use native Calendar and Time pickers (st.date_input and st.time_input) to ensure structured data and eliminate manual text-typing syntax errors.
+   - 15-Minute Automated Refresh Interval: Integrate a dynamic refresh component with a simulated countdown widget on the sidebar ("Next Auto-Refresh countdown: 14:59 Min remaining") to force data synchronization every 15 minutes.
+   - Quality Check Control: A specific section where Quality Control Inspectors can approve or reject batch quantities digitally, adding strict validation before product dispatch.
+
+3. Advanced High-Quality Analytics & Visualizations:
+   - Real-time Financial Leak Calculation: Implement a live financial tracking metric that calculates losses during asset disruptions based on the industrial formula: (Total Machinery Downtime Minutes * $5.0) + (Total Rejected Outcasts * $1.5). Display this leakage value prominently to the owner.
+   - Predictive Machinery Health Advisor: Create an active analytics widget evaluating machine health. Calculate a live "Machinery Fatigue Score %" based on accumulated downtime hours and reject volatility. Display conditional risk warnings (🟢 Stable, 🟡 Critical Caution, 🔴 High Risk Imminent Failure) with recommended system preventions.
+   - Interactive Data Charts (Plotly Integration): Embed dynamic charts including a Plotly Pie Chart mapping the Good-to-Reject Production Volumetric Ratio, and a Plotly Bar Chart auditing Machinery Disruption Downtime Event Durations by Staff.
+
+4. Multi-Language Switch (English / العربية Toggle):
+   Embed a seamless language switch in the sidebar. When flipped, it must immediately translate all interface elements: titles, input labels, KPI card metrics, Plotly chart legends, forms, calendar strings, and AI responses.
+
+5. Secure Contextual AI Copilot Terminal:
+   Build an interactive search console simulating an enterprise AI production analyst. The AI engine must parse exclusively the logs of the active logged-in order to explain root causes and financial leakage trends بلغة بشرية طبيعية وبسرية تامة. The AI must remain strictly bounded within the provided data context and never hallucinate or make up outside scenarios.
+
+Deliver a perfectly wrapped, unified codebase inside 'main.py' that runs flawlessly with 'streamlit run main.py' and persists st.session_state seamlessly on external browsers.

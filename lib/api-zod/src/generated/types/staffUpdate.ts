@@ -5,8 +5,14 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { StaffUpdateRole } from './staffUpdateRole';
+import type { StaffUpdateRolesItem } from './staffUpdateRolesItem';
 
 export interface StaffUpdate {
   role: StaffUpdateRole;
   active: boolean;
+  /**
+     * @minItems 1
+     * @maxItems 3
+     */
+  roles?: StaffUpdateRolesItem[];
 }

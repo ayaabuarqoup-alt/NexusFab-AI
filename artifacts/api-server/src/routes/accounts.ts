@@ -5,6 +5,7 @@ import { ActivateAccountBody, ChangePasswordBody, InviteStaffBody, UpdateStaffBo
 import { requireFactory, requireRoles, loginLimit, verifyPassword, tokenHash, clearSession } from "../middlewares/factory-auth";
 import { audit, decrypt, encrypt, hashPassword } from "../lib/vault";
 import { OperationError } from "./operations";
+import { approvedRoles, type DatabaseClient } from "../lib/roles";
 
 const router = Router();
 const privateAccount: import("express").RequestHandler = (_req,res,next) => {
@@ -13,20 +14,24 @@ const privateAccount: import("express").RequestHandler = (_req,res,next) => {
 };
 // All account changes lock the same tenant row as operational mutations; audit and
 // credential changes commit together. Role checks repeat under that lock.
-async function accountChange<T>(actor: Record<string, any>, fn: (client: Pick<typeof pool, "query">, record: (action: string, target: string, detail?: string) => void) => Promise<T>, ownerOnly = true) {
+async function accountChange<T>(actor: Record<string, any>, fn: (client: DatabaseClient, record: (action: string, target: string, detail?: string) => void) => Promise<T>, ownerOnly = true) {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
     const { rows } = await client.query("SELECT payload FROM factory_vaults WHERE id=$1 FOR UPDATE", [actor.factory]);
-    const user = await client.query("SELECT active,role,password_hash FROM factory_users WHERE id=$1 AND factory_id=$2", [actor.userId,actor.factory]);
-    if (!user.rows[0]?.active || !user.rows[0]?.password_hash || (ownerOnly && user.rows[0].role !== "owner")) throw new OperationError("FORBIDDEN",403);
+    const user = await client.query(`SELECT u.active,u.role,u.roles,u.password_hash,s.active_role FROM factory_users u
+      JOIN factory_sessions s ON s.user_id=u.id AND s.factory_id=u.factory_id
+      WHERE u.id=$1 AND u.factory_id=$2 AND s.id=$3 AND s.expires_at>NOW()`, [actor.userId,actor.factory,actor.sessionId]);
+    if (!user.rows[0]?.active || !user.rows[0]?.password_hash ||
+      !approvedRoles(user.rows[0]).includes(user.rows[0].active_role) ||
+      (ownerOnly && user.rows[0].active_role !== "owner")) throw new OperationError("FORBIDDEN",403);
     const vault = decrypt(actor.factory, rows[0].payload);
     const result = await fn(client, (action,target,detail="") => audit(vault,{userId:actor.userId,userName:actor.userName},action,target,detail));
     await client.query("UPDATE factory_vaults SET payload=$1 WHERE id=$2", [encrypt(actor.factory,vault),actor.factory]);
     await client.query("COMMIT"); return result;
   } catch(e) { await client.query("ROLLBACK"); throw e; } finally { client.release(); }
 }
-async function invitation(client: Pick<typeof pool, "query">, userId: string) {
+async function invitation(client: DatabaseClient, userId: string) {
   const token = randomBytes(32).toString("hex"), expiresAt = new Date(Date.now()+86400000).toISOString();
   await client.query("DELETE FROM factory_invites WHERE user_id=$1", [userId]);
   await client.query("INSERT INTO factory_invites(id,user_id,expires_at) VALUES($1,$2,$3)", [tokenHash(token),userId,expiresAt]);
@@ -71,17 +76,19 @@ router.post("/auth/password", requireFactory, privateAccount, loginLimit, async(
   clearSession(res); res.json({message:"Password changed. Sign in again."});
 });
 router.get("/staff",requireRoles("owner"),privateAccount,async(_req,res) => {
-  const { rows } = await pool.query("SELECT id,username,name,role,active,(password_hash IS NOT NULL) AS activated FROM factory_users WHERE factory_id=$1 ORDER BY name",[res.locals.factory]);
+  const { rows } = await pool.query("SELECT id,username,name,role,COALESCE(roles,ARRAY[role]) AS roles,active,(password_hash IS NOT NULL) AS activated FROM factory_users WHERE factory_id=$1 ORDER BY name",[res.locals.factory]);
   res.json(rows);
 });
 router.post("/staff",requireRoles("owner"),privateAccount,async(req,res) => {
   const input = InviteStaffBody.safeParse(req.body);
   if (!input.success || !input.data.name.trim() || ["factory_carton","factory_plastics"].includes(input.data.username)) throw new OperationError("INVALID_INPUT");
+  const roles = input.data.roles ?? [input.data.role];
+  if (!roles.includes(input.data.role) || new Set(roles).size !== roles.length) throw new OperationError("INVALID_INPUT");
   try {
     const result = await accountChange(res.locals,async(client,record) => {
       const id = randomUUID();
-      await client.query("INSERT INTO factory_users(id,factory_id,username,name,role) VALUES($1,$2,$3,$4,$5)",[id,res.locals.factory,input.data.username,input.data.name.trim(),input.data.role]);
-      record("staff_invited",id,input.data.role);
+      await client.query("INSERT INTO factory_users(id,factory_id,username,name,role,roles) VALUES($1,$2,$3,$4,$5,$6)",[id,res.locals.factory,input.data.username,input.data.name.trim(),roles[0],roles]);
+      record("staff_invited",id,roles.join(","));
       return invitation(client,id);
     }); res.json(result);
   } catch(e) { if ((e as {code?:string}).code === "23505") throw new OperationError("USERNAME_TAKEN",409); throw e; }
@@ -90,13 +97,15 @@ router.patch("/staff/:id",requireRoles("owner"),privateAccount,async(req,res) =>
   const input = UpdateStaffBody.safeParse(req.body);
   if (!input.success) throw new OperationError("INVALID_INPUT");
   if (req.params.id === res.locals.userId) throw new OperationError("SELF_CHANGE_FORBIDDEN",409);
+  const roles = input.data.roles ?? [input.data.role];
+  if (!roles.includes(input.data.role) || new Set(roles).size !== roles.length) throw new OperationError("INVALID_INPUT");
   await accountChange(res.locals,async(client,record) => {
     const found = await client.query("SELECT id FROM factory_users WHERE id=$1 AND factory_id=$2",[req.params.id,res.locals.factory]);
     if (!found.rowCount) throw new OperationError("NOT_FOUND",404);
-    await client.query("UPDATE factory_users SET role=$1,active=$2 WHERE id=$3",[input.data.role,input.data.active,req.params.id]);
+    await client.query("UPDATE factory_users SET role=$1,roles=$2,active=$3 WHERE id=$4",[roles[0],roles,input.data.active,req.params.id]);
     await client.query("DELETE FROM factory_sessions WHERE user_id=$1",[req.params.id]);
     await client.query("DELETE FROM factory_invites WHERE user_id=$1",[req.params.id]);
-    record("staff_updated",String(req.params.id),`${input.data.role}; active=${input.data.active}`);
+    record("staff_updated",String(req.params.id),`${roles.join(",")}; active=${input.data.active}`);
   }); res.json({message:"Staff updated"});
 });
 router.post("/staff/:id/reset",requireRoles("owner"),privateAccount,async(req,res) => {

@@ -38,6 +38,15 @@ export const StaffInputRole = {
   quality_inspector: 'quality_inspector',
 } as const;
 
+export type StaffInputRolesItem = typeof StaffInputRolesItem[keyof typeof StaffInputRolesItem];
+
+
+export const StaffInputRolesItem = {
+  owner: 'owner',
+  operator: 'operator',
+  quality_inspector: 'quality_inspector',
+} as const;
+
 export interface StaffInput {
   /** @pattern ^[a-z0-9_.@-]{3,100}$ */
   username: string;
@@ -47,6 +56,11 @@ export interface StaffInput {
      */
   name: string;
   role: StaffInputRole;
+  /**
+     * @minItems 1
+     * @maxItems 3
+     */
+  roles?: StaffInputRolesItem[];
 }
 
 export type StaffUpdateRole = typeof StaffUpdateRole[keyof typeof StaffUpdateRole];
@@ -58,15 +72,38 @@ export const StaffUpdateRole = {
   quality_inspector: 'quality_inspector',
 } as const;
 
+export type StaffUpdateRolesItem = typeof StaffUpdateRolesItem[keyof typeof StaffUpdateRolesItem];
+
+
+export const StaffUpdateRolesItem = {
+  owner: 'owner',
+  operator: 'operator',
+  quality_inspector: 'quality_inspector',
+} as const;
+
 export interface StaffUpdate {
   role: StaffUpdateRole;
   active: boolean;
+  /**
+     * @minItems 1
+     * @maxItems 3
+     */
+  roles?: StaffUpdateRolesItem[];
 }
 
 export type StaffMemberRole = typeof StaffMemberRole[keyof typeof StaffMemberRole];
 
 
 export const StaffMemberRole = {
+  owner: 'owner',
+  operator: 'operator',
+  quality_inspector: 'quality_inspector',
+} as const;
+
+export type StaffMemberRolesItem = typeof StaffMemberRolesItem[keyof typeof StaffMemberRolesItem];
+
+
+export const StaffMemberRolesItem = {
   owner: 'owner',
   operator: 'operator',
   quality_inspector: 'quality_inspector',
@@ -79,6 +116,11 @@ export interface StaffMember {
   role: StaffMemberRole;
   active: boolean;
   activated: boolean;
+  /**
+     * @minItems 1
+     * @maxItems 3
+     */
+  roles: StaffMemberRolesItem[];
 }
 
 export interface AuditEvent {
@@ -105,6 +147,15 @@ export const SessionRole = {
   '': '',
 } as const;
 
+export type SessionAvailableRolesItem = typeof SessionAvailableRolesItem[keyof typeof SessionAvailableRolesItem];
+
+
+export const SessionAvailableRolesItem = {
+  owner: 'owner',
+  operator: 'operator',
+  quality_inspector: 'quality_inspector',
+} as const;
+
 export interface Session {
   userId?: string;
   userName?: string;
@@ -112,6 +163,8 @@ export interface Session {
   authenticated: boolean;
   factory: string;
   factoryName: string;
+  availableRoles: SessionAvailableRolesItem[];
+  requiresRoleSelection: boolean;
 }
 
 export interface LoginInput {
@@ -367,5 +420,18 @@ export interface RegistrationInput {
      * @maxLength 128
      */
   password: string;
+}
+
+export type SelectRoleInputRole = typeof SelectRoleInputRole[keyof typeof SelectRoleInputRole];
+
+
+export const SelectRoleInputRole = {
+  owner: 'owner',
+  operator: 'operator',
+  quality_inspector: 'quality_inspector',
+} as const;
+
+export interface SelectRoleInput {
+  role: SelectRoleInputRole;
 }
 

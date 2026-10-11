@@ -33,15 +33,19 @@ export async function loadVault(tenant: string): Promise<Vault> {
   if (!rows[0]) throw new Error("Factory missing");
   return decrypt(tenant, rows[0].payload);
 }
-export async function mutateVault<T>(tenant: string, fn: (v: Vault) => T, actor?: {userId: string; roles: string[]}): Promise<T> {
+export async function mutateVault<T>(tenant: string, fn: (v: Vault) => T, actor?: {userId: string; roles: string[]; sessionId: string}): Promise<T> {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
     const { rows } = await client.query("SELECT payload FROM factory_vaults WHERE id=$1 FOR UPDATE", [tenant]);
     if (!rows[0]) throw new Error("Factory missing");
     if (actor && actor.userId !== "demo") {
-      const user = await client.query("SELECT active,role,password_hash FROM factory_users WHERE id=$1 AND factory_id=$2",[actor.userId,tenant]);
-      if (!user.rows[0]?.active || !user.rows[0]?.password_hash || !actor.roles.includes(user.rows[0].role)) {
+      const user = await client.query(`SELECT u.active,u.role,u.roles,u.password_hash,s.active_role FROM factory_users u
+        JOIN factory_sessions s ON s.user_id=u.id AND s.factory_id=u.factory_id
+        WHERE u.id=$1 AND u.factory_id=$2 AND s.id=$3 AND s.expires_at>NOW()`,[actor.userId,tenant,actor.sessionId]);
+      const { approvedRoles } = await import("./roles");
+      if (!user.rows[0]?.active || !user.rows[0]?.password_hash || !actor.roles.includes(user.rows[0].active_role) ||
+        !approvedRoles(user.rows[0]).includes(user.rows[0].active_role)) {
         const { OperationError } = await import("../routes/operations");
         throw new OperationError("FORBIDDEN",403);
       }

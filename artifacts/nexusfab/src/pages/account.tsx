@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Check, Copy, History, KeyRound, Pencil, RotateCcw, ShieldAlert, UserPlus, X } from "lucide-react";
 import {
   useChangePassword, useListStaff, getListStaffQueryKey, useInviteStaff, useUpdateStaff, useResetStaffPassword,
-  useListAudit, getListAuditQueryKey, getGetSessionQueryKey, type Invitation, type StaffMember, type StaffInputRole,
+  useListAudit, getListAuditQueryKey, getGetSessionQueryKey, type Invitation, type StaffMember, type StaffInputRole, type StaffMemberRolesItem,
 } from "@workspace/api-client-react";
 import { useI18n, errorMessage, type TKey } from "@/lib/i18n";
 import { Empty, ErrorState, Field, PageHeader, Panel, Pill, Sk, inputCls, useAuthed, useRole, broadcastAuth, PermNote } from "@/components/common";
@@ -13,6 +13,34 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const ROLES: StaffInputRole[] = ["owner", "operator", "quality_inspector"];
+type R = StaffMemberRolesItem;
+const ordered = (rs: R[]) => ROLES.filter((r) => rs.includes(r));
+const grantsOf = (m: StaffMember): R[] => (m.roles?.length ? ordered(m.roles) : [m.role]);
+
+function RolePicker({ value, onChange, testId }: { value: R[]; onChange: (v: R[]) => void; testId: string }) {
+  const { t } = useI18n();
+  return (
+    <div role="group" className="flex flex-wrap gap-1.5" data-testid={testId}>
+      {ROLES.map((r) => {
+        const on = value.includes(r);
+        return (
+          <button key={r} type="button" aria-pressed={on} onClick={() => onChange(on ? value.filter((x) => x !== r) : ordered([...value, r]))}
+            data-testid={`${testId}-${r}`}
+            className={`inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition ${on ? "border-primary bg-primary/10 text-primary" : "bg-card text-muted-foreground hover:border-primary/40"}`}>
+            <span className={`grid h-3.5 w-3.5 place-items-center rounded-sm border ${on ? "border-primary bg-primary text-primary-foreground" : "border-input"}`}>{on && <Check className="h-2.5 w-2.5" />}</span>
+            {t(`role_${r}` as TKey)}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function GrantList({ roles }: { roles: R[] }) {
+  const { t } = useI18n();
+  return <div className="flex flex-wrap gap-1">{roles.map((r) => <span key={r} className="rounded-sm border bg-secondary/60 px-1.5 py-0.5 text-[11px] font-medium">{t(`role_${r}` as TKey)}</span>)}</div>;
+}
+
 const btn = "inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:brightness-110 disabled:opacity-60";
 const ghost = "inline-flex items-center gap-1.5 rounded-md border bg-card px-2.5 py-1.5 text-xs font-medium transition hover:bg-secondary disabled:opacity-50";
 
@@ -86,28 +114,29 @@ function TokenReveal({ inv, who, onClose }: { inv: Invitation; who: string; onCl
 function InviteForm({ onIssued }: { onIssued: (inv: Invitation, who: string) => void }) {
   const { t } = useI18n();
   const qc = useQueryClient();
-  const [f, setF] = useState<{ username: string; name: string; role: StaffInputRole }>({ username: "", name: "", role: "operator" });
+  const [f, setF] = useState<{ username: string; name: string; roles: R[] }>({ username: "", name: "", roles: ["operator"] });
   const [err, setErr] = useState("");
   const invite = useInviteStaff({ mutation: { onSuccess: (inv, v) => {
     qc.invalidateQueries({ queryKey: getListStaffQueryKey() }); qc.invalidateQueries({ queryKey: getListAuditQueryKey() });
-    onIssued(inv, v.data.username); setF({ username: "", name: "", role: "operator" });
+    onIssued(inv, v.data.username); setF({ username: "", name: "", roles: ["operator"] });
   } } });
   const submit = (e: FormEvent) => {
     e.preventDefault(); setErr("");
     const username = f.username.trim().toLowerCase();
     if (!username || !f.name.trim()) return setErr(t("required"));
     if (!/^[a-z0-9_.@-]{3,100}$/.test(username)) return setErr(t("usernameRule"));
-    invite.mutate({ data: { username, name: f.name.trim().slice(0, 100), role: f.role } });
+    if (f.roles.length === 0) return setErr(t("rolesRule"));
+    const roles = ordered(f.roles);
+    invite.mutate({ data: { username, name: f.name.trim().slice(0, 100), role: roles[0] as StaffInputRole, roles } });
   };
   return (
-    <form onSubmit={submit} className="grid gap-3 border-b bg-secondary/30 p-4 md:grid-cols-[1fr_1fr_180px_auto] md:items-end">
+    <form onSubmit={submit} className="grid gap-3 border-b bg-secondary/30 p-4 md:grid-cols-[1fr_1fr_auto_auto] md:items-end">
       <Field label={t("staffUsername")}><input dir="ltr" className={`${inputCls} num`} value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} placeholder="a.haddad" data-testid="input-invite-username" /></Field>
       <Field label={t("fullName")}><input className={inputCls} maxLength={100} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} data-testid="input-invite-name" /></Field>
-      <Field label={t("roleLabel")}>
-        <select className={inputCls} value={f.role} onChange={(e) => setF({ ...f, role: e.target.value as StaffInputRole })} data-testid="select-invite-role">
-          {ROLES.map((r) => <option key={r} value={r}>{t(`role_${r}` as TKey)}</option>)}
-        </select>
-      </Field>
+      <div className="flex flex-col gap-1.5">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("rolesGranted")}</span>
+        <RolePicker value={f.roles} onChange={(roles) => setF({ ...f, roles })} testId="picker-invite-roles" />
+      </div>
       <button disabled={invite.isPending} className={btn} data-testid="button-invite"><UserPlus className="h-4 w-4" />{invite.isPending ? t("inviting") : t("invite")}</button>
       <span className="text-[11px] text-muted-foreground md:col-span-4">{t("usernameRule")}</span>
       {(err || invite.isError) && <p className="text-xs text-destructive md:col-span-4" data-testid="text-invite-error">{err || errorMessage(invite.error, t)}</p>}
@@ -120,7 +149,8 @@ function StaffRow({ m, self, onIssued }: { m: StaffMember; self: boolean; onIssu
   const qc = useQueryClient();
   const { toast } = useToast();
   const [editing, setEditing] = useState(false);
-  const [role, setRole] = useState(m.role);
+  const [roles, setRoles] = useState<R[]>(grantsOf(m));
+  const [rowErr, setRowErr] = useState("");
   const [active, setActive] = useState(m.active);
   const [confirm, setConfirm] = useState(false);
   const refresh = () => { qc.invalidateQueries({ queryKey: getListStaffQueryKey() }); qc.invalidateQueries({ queryKey: getListAuditQueryKey() }); };
@@ -141,10 +171,8 @@ function StaffRow({ m, self, onIssued }: { m: StaffMember; self: boolean; onIssu
       </div>
       <div>
         {editing ? (
-          <select className={inputCls} value={role} onChange={(e) => setRole(e.target.value as StaffMember["role"])} data-testid={`select-role-${m.id}`}>
-            {ROLES.map((r) => <option key={r} value={r}>{t(`role_${r}` as TKey)}</option>)}
-          </select>
-        ) : <span className="text-sm">{t(`role_${m.role}` as TKey)}</span>}
+          <RolePicker value={roles} onChange={(v) => { setRoles(v); setRowErr(""); }} testId={`picker-roles-${m.id}`} />
+        ) : <GrantList roles={grantsOf(m)} />}
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
         {editing ? (
@@ -159,16 +187,16 @@ function StaffRow({ m, self, onIssued }: { m: StaffMember; self: boolean; onIssu
       <div className="flex flex-col items-start gap-1 md:items-end">
         {self ? <span className="max-w-[200px] text-[11px] text-muted-foreground md:text-end">{t("selfNote")}</span> : editing ? (
           <div className="flex gap-1.5">
-            <button onClick={() => { setEditing(false); setRole(m.role); setActive(m.active); update.reset(); }} className={ghost} data-testid={`button-cancel-${m.id}`}>{t("cancel")}</button>
-            <button onClick={() => update.mutate({ id: m.id, data: { role, active } })} disabled={update.isPending} className={`${ghost} border-primary bg-primary text-primary-foreground hover:bg-primary hover:brightness-110`} data-testid={`button-save-${m.id}`}>{update.isPending ? t("saving") : t("save")}</button>
+            <button onClick={() => { setEditing(false); setRoles(grantsOf(m)); setRowErr(""); setActive(m.active); update.reset(); }} className={ghost} data-testid={`button-cancel-${m.id}`}>{t("cancel")}</button>
+            <button onClick={() => { if (!roles.length) return setRowErr(t("rolesRule")); const rs = ordered(roles); update.mutate({ id: m.id, data: { role: rs[0], active, roles: rs } }); }} disabled={update.isPending} className={`${ghost} border-primary bg-primary text-primary-foreground hover:bg-primary hover:brightness-110`} data-testid={`button-save-${m.id}`}>{update.isPending ? t("saving") : t("save")}</button>
           </div>
         ) : (
           <div className="flex gap-1.5">
-            <button onClick={() => { setRole(m.role); setActive(m.active); setEditing(true); }} className={ghost} data-testid={`button-edit-${m.id}`}><Pencil className="h-3.5 w-3.5" />{t("edit")}</button>
+            <button onClick={() => { setRoles(grantsOf(m)); setRowErr(""); setActive(m.active); setEditing(true); }} className={ghost} data-testid={`button-edit-${m.id}`}><Pencil className="h-3.5 w-3.5" />{t("edit")}</button>
             <button onClick={() => setConfirm(true)} disabled={reset.isPending} className={`${ghost} text-destructive hover:bg-destructive/5`} data-testid={`button-reset-${m.id}`}><RotateCcw className="h-3.5 w-3.5" />{t("resetInv")}</button>
           </div>
         )}
-        {update.isError && <span className="text-[11px] text-destructive">{errorMessage(update.error, t)}</span>}
+        {(rowErr || update.isError) && <span className="text-[11px] text-destructive" data-testid={`text-row-error-${m.id}`}>{rowErr || errorMessage(update.error, t)}</span>}
       </div>
       <AlertDialog open={confirm} onOpenChange={setConfirm}>
         <AlertDialogContent>
@@ -200,7 +228,7 @@ function StaffPanel({ selfId }: { selfId?: string }) {
       {staff.isError ? <div className="p-4"><ErrorState error={staff.error} onRetry={() => staff.refetch()} /></div>
         : !staff.data ? <div className="space-y-2 p-4">{[0, 1, 2].map((i) => <Sk key={i} className="h-12" />)}</div>
         : staff.data.length === 0 ? <div className="p-4"><Empty title={t("noStaff")} sub={t("noStaffSub")} /></div>
-        : staff.data.map((m) => <StaffRow key={`${m.id}-${m.role}-${m.active}`} m={m} self={m.id === selfId} onIssued={onIssued} />)}
+        : staff.data.map((m) => <StaffRow key={`${m.id}-${grantsOf(m).join(",")}-${m.active}`} m={m} self={m.id === selfId} onIssued={onIssued} />)}
     </Panel>
   );
 }
@@ -246,7 +274,8 @@ export default function Account() {
       <PageHeader title={t("acctTitle")} sub={t("acctSub")} />
       <div className="rise flex flex-wrap items-center gap-x-6 gap-y-2 rounded-md border bg-card px-4 py-3 text-sm" data-testid="panel-identity">
         <span><span className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("signedInAs")} </span><span className="font-medium">{session?.userName || session?.factoryName}</span></span>
-        <span><span className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("roleLabel")} </span><span className="font-medium">{t(role ? (`role_${role}` as TKey) : "role_none")}</span></span>
+        <span><span className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("activeRoleLbl")} </span><span className="font-medium" data-testid="text-active-role">{t(role ? (`role_${role}` as TKey) : "role_none")}</span></span>
+        {!!session?.availableRoles?.length && <span className="flex items-center gap-2" data-testid="text-granted-roles"><span className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("rolesGranted")}</span><GrantList roles={ordered(session.availableRoles)} /></span>}
         <span><span className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("userIdLbl")} </span><span dir="ltr" className="num">{session?.userId || "demo"}</span></span>
       </div>
       {demo && (

@@ -5,6 +5,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { StaffInputRole } from './staffInputRole';
+import type { StaffInputRolesItem } from './staffInputRolesItem';
 
 export interface StaffInput {
   /** @pattern ^[a-z0-9_.@-]{3,100}$ */
@@ -15,4 +16,9 @@ export interface StaffInput {
      */
   name: string;
   role: StaffInputRole;
+  /**
+     * @minItems 1
+     * @maxItems 3
+     */
+  roles?: StaffInputRolesItem[];
 }

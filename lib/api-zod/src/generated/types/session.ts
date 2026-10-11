@@ -4,6 +4,7 @@
  * Api
  * OpenAPI spec version: 1.0.0
  */
+import type { SessionAvailableRolesItem } from './sessionAvailableRolesItem';
 import type { SessionRole } from './sessionRole';
 
 export interface Session {
@@ -13,4 +14,6 @@ export interface Session {
   authenticated: boolean;
   factory: string;
   factoryName: string;
+  availableRoles: SessionAvailableRolesItem[];
+  requiresRoleSelection: boolean;
 }

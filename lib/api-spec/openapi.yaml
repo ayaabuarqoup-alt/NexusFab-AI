@@ -495,6 +495,33 @@
           }
         }
       }
+    },
+    "/auth/role": {
+      "post": {
+        "operationId": "selectRole",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelectRoleInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Selected authorized session role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -574,6 +601,20 @@
               "operator",
               "quality_inspector"
             ]
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "owner",
+                "operator",
+                "quality_inspector"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 3,
+            "uniqueItems": true
           }
         }
       },
@@ -594,6 +635,20 @@
           },
           "active": {
             "type": "boolean"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "owner",
+                "operator",
+                "quality_inspector"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 3,
+            "uniqueItems": true
           }
         }
       },
@@ -605,7 +660,8 @@
           "name",
           "role",
           "active",
-          "activated"
+          "activated",
+          "roles"
         ],
         "properties": {
           "id": {
@@ -630,6 +686,20 @@
           },
           "activated": {
             "type": "boolean"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "owner",
+                "operator",
+                "quality_inspector"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 3,
+            "uniqueItems": true
           }
         }
       },
@@ -684,7 +754,9 @@
         "required": [
           "authenticated",
           "factory",
-          "factoryName"
+          "factoryName",
+          "availableRoles",
+          "requiresRoleSelection"
         ],
         "properties": {
           "userId": {
@@ -710,6 +782,20 @@
           },
           "factoryName": {
             "type": "string"
+          },
+          "availableRoles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "owner",
+                "operator",
+                "quality_inspector"
+              ]
+            }
+          },
+          "requiresRoleSelection": {
+            "type": "boolean"
           }
         }
       },
@@ -1232,6 +1318,22 @@
             "type": "string",
             "minLength": 12,
             "maxLength": 128
+          }
+        }
+      },
+      "SelectRoleInput": {
+        "type": "object",
+        "required": [
+          "role"
+        ],
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "owner",
+              "operator",
+              "quality_inspector"
+            ]
           }
         }
       }

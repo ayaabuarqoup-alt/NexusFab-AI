@@ -20,7 +20,7 @@ const server = app.listen(0,"127.0.0.1");
 await new Promise<void>(resolve => server.once("listening",resolve));
 const address = server.address() as {port:number};
 let authAttempts = 0;
-async function call(path: string, method="GET", body?: unknown, cookie?: string, expected=200) {
+async function call(path: string, method="GET", body?: unknown, cookie?: string, expected=200): Promise<{ data: any; cookie: string }> {
   const credential = path.startsWith("/auth/") && method === "POST";
   const response = await fetch(`http://127.0.0.1:${address.port}/api${path}`,{
     method,headers:{"Content-Type":"application/json","X-Forwarded-For":`${ip}-${credential ? Math.floor(authAttempts++ / 10) : "ops"}`,...(cookie?{Cookie:cookie}:{})},
@@ -28,7 +28,13 @@ async function call(path: string, method="GET", body?: unknown, cookie?: string,
   });
   const data: any = await response.json();
   assert.equal(response.status,expected,`${method} ${path}: ${JSON.stringify(data)}`);
-  return {data,cookie:response.headers.get("set-cookie")?.split(";")[0] ?? ""};
+  const sessionCookie = response.headers.get("set-cookie")?.split(";")[0] ?? "";
+  if (path === "/auth/login" && response.status === 200) {
+    assert.equal(data.requiresRoleSelection, true);
+    const selected = await call("/auth/role", "POST", { role: data.availableRoles[0] }, sessionCookie);
+    return { data: selected.data, cookie: sessionCookie };
+  }
+  return {data,cookie:sessionCookie};
 }
 try {
   await assert.rejects(provisionFactory(tenants[0],"Disposable factory A",`${suffix}.owner`,"O".repeat(101)),/Invalid factory or owner details/);

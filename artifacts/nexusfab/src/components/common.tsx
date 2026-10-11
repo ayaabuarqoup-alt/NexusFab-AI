@@ -1,7 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import Plotly from "plotly.js-dist-min";
 import { AlertTriangle, Inbox, RotateCw } from "lucide-react";
-import { useGetSession, getGetSessionQueryKey } from "@workspace/api-client-react";
+import { useGetSession, getGetSessionQueryKey, type Session } from "@workspace/api-client-react";
 import { useI18n, errorMessage } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { QueryClient } from "@tanstack/react-query";
@@ -14,7 +14,7 @@ export function broadcastAuth() {
   try { localStorage.setItem(AUTH_KEY, String(Date.now())); } catch { /* ignore */ }
 }
 
-export async function updateSession(qc: QueryClient, session: { authenticated: boolean; factory: string; factoryName: string }) {
+export async function updateSession(qc: QueryClient, session: Partial<Session> & { authenticated: boolean; factory: string; factoryName: string }) {
   // Keep the active session observer attached; clearing the whole cache strands it.
   // Cancel old requests before publishing the new identity so they cannot repopulate it.
   await qc.cancelQueries();
@@ -29,7 +29,11 @@ export function onAuthBroadcast(fn: () => void) {
 }
 export function useAuthed() {
   const { data } = useGetSession({ query: sessionQuery });
-  return !!data?.authenticated;
+  // Protected data only loads once a granted working role is active in this session.
+  return isRoleActive(data);
+}
+export function isRoleActive(s?: Session) {
+  return !!s?.authenticated && !s.requiresRoleSelection && !!s.role;
 }
 export function useProtected() {
   const authed = useAuthed();

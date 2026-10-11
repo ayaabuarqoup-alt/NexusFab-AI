@@ -11,6 +11,7 @@ export const factorySessions = pgTable("factory_sessions", {
   id: text("id").primaryKey(),
   factoryId: text("factory_id").notNull().references(() => factoryVaults.id),
   userId: text("user_id").references(() => factoryUsers.id),
+  activeRole: text("active_role"),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
 
@@ -20,6 +21,7 @@ export const factoryUsers = pgTable("factory_users", {
   username: text("username").notNull().unique(),
   name: text("name").notNull(),
   role: text("role").notNull(),
+  roles: text("roles").array(),
   passwordHash: text("password_hash"),
   active: boolean("active").notNull().default(true),
 });

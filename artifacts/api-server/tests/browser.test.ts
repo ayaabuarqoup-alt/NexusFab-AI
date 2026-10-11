@@ -39,6 +39,10 @@ test("signed-in production, reload, bilingual analyst, mobile RTL and cross-tab 
       const response = await responsePromise;
       assert.equal(response.status(), 200, `Temporary factory login returned HTTP ${response.status()}`);
       assert.equal((await response.json()).authenticated, true, "Temporary factory credentials must authenticate");
+      await visible(page, "button-pick-role-owner");
+      assert.equal(await page.getByTestId("button-enter-role").isDisabled(), true);
+      await page.getByTestId("button-pick-role-owner").click();
+      await page.getByTestId("button-enter-role").click();
       try { await visible(page, "button-logout"); }
       catch (error) {
         const session = await page.evaluate(async () => (await fetch("/api/auth/session")).json());

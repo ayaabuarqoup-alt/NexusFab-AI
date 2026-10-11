@@ -41,11 +41,12 @@ test("public registration creates empty encrypted factories and owner sessions",
   for (const tenantId of tenants.slice(0, 2)) {
     const result = await request("/auth/register", "POST", { tenantId, factoryName: `Factory ${tenantId}`, password });
     assert.equal(result.status, 200, JSON.stringify(result.data));
-    assert.equal(result.data.role, "owner"); assert.equal(result.data.factory, tenantId);
+    assert.equal(result.data.role, ""); assert.equal(result.data.requiresRoleSelection, true); assert.equal(result.data.factory, tenantId);
     assert.ok(result.cookie); cookies.push(result.cookie!);
     const vault = await loadVault(tenantId);
     assert.deepEqual(vault.jobs, []); assert.deepEqual(vault.logs, []);
     assert.equal(vault.audit?.[0]?.action, "factory_registered");
+    assert.equal((await request("/auth/role", "POST", { role: "owner" }, result.cookie)).status, 200);
     const raw = await pool.query("SELECT payload FROM factory_vaults WHERE id=$1", [tenantId]);
     assert.ok(!raw.rows[0].payload.includes("factory_registered"));
     const session = await request("/auth/session", "GET", undefined, result.cookie);

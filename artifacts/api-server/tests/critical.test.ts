@@ -56,6 +56,7 @@ before(async () => {
     const r = await request("/auth/login", "POST", { username, password }, "");
     assert.equal(r.status, 200);
     cookies.push(r.response.headers.get("set-cookie")!.split(";")[0]!);
+    assert.equal((await request("/auth/role", "POST", { role: "owner" }, cookies.at(-1))).status, 200);
   }
 });
 after(async () => {

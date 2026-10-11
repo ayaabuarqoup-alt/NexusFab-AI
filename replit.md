@@ -39,6 +39,8 @@ Factory users create jobs, record production and stoppages, approve or reject ba
 - Factory onboarding now supports public registration of a new, empty tenant and its owner. The Tenant ID is the owner's sign-in username; staff still use individual invitations and owner/operator/quality-inspector permissions. Existing factory identities cannot be claimed through signup.
 - SESSION_SECRET is also the root used to derive per-factory vault encryption keys. Back it up securely; do not rotate it without decrypting and re-encrypting existing vaults in a controlled migration. Losing it makes existing vaults unreadable.
 - The copilot is deterministic record analysis, not an external LLM. It supports scoped totals, recorded downtime concentrations, operator yield and recorded-date trends, with timestamped evidence. It must not claim validated root causes, labor efficiency or future failures from incomplete logs.
+- Every login (including a newly registered owner) requires explicit selection of an owner-approved role before factory APIs or screens can be used. Owners can grant several roles through staff management; session permissions come only from the selected role. Legacy accounts retain their single existing grant, and role-grant changes revoke affected sessions.
+- `pnpm --filter @workspace/api-server test` runs the core/security, role-permission and onboarding/analyst regression suites. Type checks remain available separately.
 - Machinery fatigue is an illustrative heuristic, not a validated failure predictor or safety control.
 - Native date/time picker chrome follows browser/OS locale; app labels and date displays follow the selected English/Arabic language.
 

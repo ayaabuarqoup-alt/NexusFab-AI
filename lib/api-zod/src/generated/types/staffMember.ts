@@ -5,6 +5,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { StaffMemberRole } from './staffMemberRole';
+import type { StaffMemberRolesItem } from './staffMemberRolesItem';
 
 export interface StaffMember {
   id: string;
@@ -13,4 +14,9 @@ export interface StaffMember {
   role: StaffMemberRole;
   active: boolean;
   activated: boolean;
+  /**
+     * @minItems 1
+     * @maxItems 3
+     */
+  roles: StaffMemberRolesItem[];
 }

@@ -41,7 +41,7 @@ router.post("/jobs", requireRoles("owner","operator"), async (req, res): Promise
     const job: Job = { ...data, name: data.name.trim(), id: randomUUID(), status: "planned", goodQty: 0, rejects: 0 };
     audit(v,{userId:res.locals.userId,userName:res.locals.userName},"job_created",job.id);
     v.jobs.unshift(job); return job;
-  }, {userId:res.locals.userId,roles:["owner","operator"]});
+  }, {userId:res.locals.userId,sessionId:res.locals.sessionId,roles:["owner","operator"]});
   res.json(CreateJobResponse.parse(result));
 });
 router.post("/logs", requireRoles("owner","operator"), async (req, res): Promise<void> => {
@@ -65,7 +65,7 @@ router.post("/logs", requireRoles("owner","operator"), async (req, res): Promise
     // Validate before committing so a contract mismatch cannot poison the vault.
     CreateLogResponse.parse(log);
     v.logs.unshift(log); return log;
-  }, {userId:res.locals.userId,roles:["owner","operator"]});
+  }, {userId:res.locals.userId,sessionId:res.locals.sessionId,roles:["owner","operator"]});
   res.json(CreateLogResponse.parse(result));
 });
 router.patch("/logs/:id/quality", requireRoles("owner","quality_inspector"), async (req, res): Promise<void> => {
@@ -79,7 +79,7 @@ router.patch("/logs/:id/quality", requireRoles("owner","quality_inspector"), asy
     log.reviewedBy = res.locals.userId; log.reviewerName = res.locals.userName; log.reviewedAt = new Date().toISOString();
     audit(v,{userId:res.locals.userId,userName:res.locals.userName},"quality_reviewed",log.id,`${log.qcStatus}: ${log.qcNote}`);
     return log;
-  }, {userId:res.locals.userId,roles:["owner","quality_inspector"]});
+  }, {userId:res.locals.userId,sessionId:res.locals.sessionId,roles:["owner","quality_inspector"]});
   res.json(ReviewQualityResponse.parse(result));
 });
 router.post("/jobs/:id/dispatch", requireRoles("owner"), async (req, res): Promise<void> => {
@@ -94,7 +94,7 @@ router.post("/jobs/:id/dispatch", requireRoles("owner"), async (req, res): Promi
     job.status = "dispatched";
     audit(v,{userId:res.locals.userId,userName:res.locals.userName},"job_dispatched",job.id);
     return job;
-  }, {userId:res.locals.userId,roles:["owner"]});
+  }, {userId:res.locals.userId,sessionId:res.locals.sessionId,roles:["owner"]});
   res.json(DispatchJobResponse.parse(result));
 });
 router.post("/analyst", async (req, res): Promise<void> => {

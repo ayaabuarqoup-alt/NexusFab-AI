@@ -8,8 +8,9 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { I18nProvider, useI18n } from '@/lib/i18n';
 import { Shell } from '@/components/shell';
-import { ErrorState, Sk, sessionQuery, onAuthBroadcast } from '@/components/common';
+import { ErrorState, Sk, sessionQuery, onAuthBroadcast, isRoleActive } from '@/components/common';
 import Login from '@/pages/login';
+import SelectRole from '@/pages/select-role';
 import Dashboard from '@/pages/dashboard';
 import Jobs from '@/pages/jobs';
 import Production from '@/pages/production';
@@ -35,7 +36,7 @@ function Gate() {
   const qc = useQueryClient();
   const s = useGetSession({ query: sessionQuery });
   useEffect(() => onAuthBroadcast(() => { qc.resetQueries({ predicate: (q) => q.queryKey[0] !== getGetSessionQueryKey()[0] }); qc.invalidateQueries({ queryKey: getGetSessionQueryKey() }); }), [qc]);
-  const tenant = s.data?.authenticated ? `${s.data.factory}::${s.data.userId ?? ''}` : '';
+  const tenant = s.data?.authenticated ? `${s.data.factory}::${s.data.userId ?? ''}::${s.data.role ?? ''}` : '';
   const prevTenant = useRef<string | null>(null);
   useEffect(() => {
     if (prevTenant.current && prevTenant.current !== tenant) qc.resetQueries({ predicate: (q) => q.queryKey[0] !== getGetSessionQueryKey()[0] });
@@ -48,6 +49,7 @@ function Gate() {
   );
   if (s.isError) return <div className="mx-auto max-w-md p-8"><ErrorState error={s.error} onRetry={() => s.refetch()} /></div>;
   if (!s.data?.authenticated) return <Login />;
+  if (!isRoleActive(s.data)) return <SelectRole key={tenant} session={s.data} />;
   return (
     <Shell key={tenant}>
       <RoutedErrorBoundary>

@@ -121,12 +121,19 @@ export function Field({ label, children, error }: { label: string; children: Rea
 }
 export const inputCls = "h-9 w-full rounded-md border border-input bg-card px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:opacity-60";
 
-export function Plot({ data, layout, height = 280, testId }: { data: Plotly.Data[]; layout?: Partial<Plotly.Layout>; height?: number; testId?: string }) {
+export type PlotPoint = { label?: string; x?: unknown; curveNumber: number };
+export function Plot({ data, layout, height = 280, testId, onClick, onHover, onUnhover }: {
+  data: Plotly.Data[]; layout?: Partial<Plotly.Layout>; height?: number; testId?: string;
+  onClick?: (p: PlotPoint) => void; onHover?: (p: PlotPoint) => void; onUnhover?: () => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const { lang } = useI18n();
+  const cb = useRef({ onClick, onHover, onUnhover });
+  cb.current = { onClick, onHover, onUnhover };
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    let alive = true;
     Plotly.react(el, data, {
       height, autosize: true, margin: { l: 40, r: 16, t: 8, b: 40 },
       paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
@@ -134,13 +141,21 @@ export function Plot({ data, layout, height = 280, testId }: { data: Plotly.Data
       hoverlabel: { bgcolor: "#0F172A", bordercolor: "#0F172A", font: { color: "#F8FAFC", family: "IBM Plex Sans, IBM Plex Sans Arabic" } },
       legend: { orientation: "h", y: -0.12 },
       ...layout,
-    }, { displayModeBar: false, responsive: true });
+    }, { displayModeBar: false, responsive: true }).then((gd) => {
+      if (!alive) return;
+      const g = gd as unknown as { removeAllListeners?: (e: string) => void; on: (e: string, f: (ev: { points?: PlotPoint[] }) => void) => void };
+      ["plotly_click", "plotly_hover", "plotly_unhover"].forEach((e) => g.removeAllListeners?.(e));
+      g.on("plotly_click", (ev) => { const p = ev.points?.[0]; if (p) cb.current.onClick?.(p); });
+      g.on("plotly_hover", (ev) => { const p = ev.points?.[0]; if (p) cb.current.onHover?.(p); });
+      g.on("plotly_unhover", () => cb.current.onUnhover?.());
+    });
+    return () => { alive = false; };
   }, [data, layout, height, lang]);
   useEffect(() => {
     const el = ref.current;
     return () => { if (el) Plotly.purge(el); };
   }, []);
-  return <div ref={ref} data-testid={testId} className="w-full" style={{ minHeight: height }} />;
+  return <div ref={ref} data-testid={testId} className={cn("w-full", onClick && "cursor-pointer")} style={{ minHeight: height }} />;
 }
 
 export function useRole() {

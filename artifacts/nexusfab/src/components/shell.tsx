@@ -92,7 +92,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <div className="grid h-8 w-8 place-items-center rounded-md bg-sidebar-primary"><Factory className="h-4 w-4 text-white" /></div>
         <div>
           <div className="text-sm font-semibold text-white">{t("appName")}</div>
-          <div className="text-[10px] uppercase tracking-wider text-sidebar-foreground/55">{t("tagline")}</div>
+          <div className="text-[10px] uppercase tracking-wider text-sidebar-foreground/55">{t("brandLine")}</div>
         </div>
       </div>
       <div className="rounded-md border border-sidebar-border px-3 py-2">

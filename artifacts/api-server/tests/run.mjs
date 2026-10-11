@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 
 if (process.env.NODE_ENV === "production") throw new Error("Regression tests must not run in production");
 const out = fileURLToPath(new URL("../node_modules/.cache/regression/", import.meta.url));
-const suite = process.argv.includes("--browser") ? "browser" : "critical";
+const suite = process.argv.includes("--browser") ? "browser" : process.argv.includes("--upgrade") ? "upgrade" : "critical";
 await mkdir(out, { recursive: true });
 try {
   await build({

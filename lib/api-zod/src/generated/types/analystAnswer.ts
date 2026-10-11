@@ -4,6 +4,8 @@
  * Api
  * OpenAPI spec version: 1.0.0
  */
+import type { AnalystAnswerIntent } from './analystAnswerIntent';
+import type { ProductionLog } from './productionLog';
 
 export interface AnalystAnswer {
   answer: string;
@@ -12,4 +14,7 @@ export interface AnalystAnswer {
   generatedAt: string;
   answerEn: string;
   answerAr: string;
+  intent: AnalystAnswerIntent;
+  evidence: ProductionLog[];
+  evidenceTruncated: boolean;
 }

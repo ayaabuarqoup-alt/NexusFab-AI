@@ -5,6 +5,7 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { AnalystInputLanguage } from './analystInputLanguage';
+import type { AnalystInputMachineId } from './analystInputMachineId';
 
 export interface AnalystInput {
   /**
@@ -13,4 +14,9 @@ export interface AnalystInput {
      */
   question: string;
   language: AnalystInputLanguage;
+  jobId?: string;
+  machineId?: AnalystInputMachineId;
+  staff?: string;
+  fromDate?: string;
+  toDate?: string;
 }

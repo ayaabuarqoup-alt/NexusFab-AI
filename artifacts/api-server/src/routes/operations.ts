@@ -7,7 +7,8 @@ import {
 } from "@workspace/api-zod";
 import { requireFactory, requireRoles } from "../middlewares/factory-auth";
 import { audit, loadVault, mutateVault, type Job, type Log } from "../lib/vault";
-import { analyze, summarize } from "../lib/analytics";
+import { summarize } from "../lib/analytics";
+import { analyzeRecords, AnalystInputError } from "../lib/analyst";
 
 export class OperationError extends Error {
   constructor(public code: string, public status = 400) { super(code); }
@@ -100,10 +101,11 @@ router.post("/analyst", async (req, res): Promise<void> => {
   const parsed = AskAnalystBody.safeParse(req.body);
   if (!parsed.success || !parsed.data.question.trim()) throw new OperationError("INVALID_INPUT");
   const vault = await loadVault(res.locals.factory);
-  const en = analyze(vault, parsed.data.question, "en");
-  const ar = analyze(vault, parsed.data.question, "ar");
-  res.json(AskAnalystResponse.parse({
-    ...(parsed.data.language === "ar" ? ar : en), answerEn: en.answer, answerAr: ar.answer,
-  }));
+  try {
+    res.json(AskAnalystResponse.parse(analyzeRecords(vault, parsed.data)));
+  } catch (error) {
+    if (error instanceof AnalystInputError) throw new OperationError(error.message);
+    throw error;
+  }
 });
 export default router;

@@ -1,3 +1,3 @@
 - [Product decisions](nexusfab-decisions.md) — React supersedes the uploaded Streamlit brief; preserve bilingual factory isolation and honest analytics limits.
-- [Private onboarding policy](private-onboarding.md) — invitation-only setup and live-owner activation are deliberate release safeguards.
+- [Factory onboarding policy](private-onboarding.md) — public signup for new, empty factories is authorized; preserve staff invitations and existing tenant boundaries.
 - [Session cache transitions](session-cache-transitions.md) — preserve active query observers during login and tenant hydration; browser checks catch failures API tests cannot.

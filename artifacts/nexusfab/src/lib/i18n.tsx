@@ -1,11 +1,12 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { enX, arX } from "./i18n-account";
+import { enY, arY } from "./i18n-ops";
 
 export type Lang = "en" | "ar";
 
 const en = {
   ...enX,
-  appName: "NexusFab AI", tagline: "Manufacturing operating system",
+  appName: "⚡ NexusFab AI™", tagline: "Manufacturing operating system",
   loginTitle: "Sign in to your factory vault", loginSub: "Each factory operates in an isolated data vault. Your logs and metrics are never visible to another tenant.",
   username: "Staff username", password: "Password", signIn: "Sign in", signingIn: "Verifying credentials",
   demoAccess: "Demo access", demoNote: "Sample factories with seeded sample data. Click to fill.",
@@ -48,11 +49,12 @@ const en = {
   err_TARGET_NOT_MET: "Target quantity has not been met.", err_QC_PENDING: "All batches must be approved before dispatch.", err_ALREADY_REVIEWED: "This batch already has a decision.", err_ALREADY_DISPATCHED: "This job was already dispatched.", err_NETWORK: "Network error. Check your connection.", err_UNKNOWN: "Unexpected error.", err_INVALID_INPUT: "Some fields are invalid.", err_INVALID_DATE: "Invalid date or time.", err_EMPTY_LOG: "Enter good quantity, rejects or downtime.", err_REASON_REQUIRED: "A stoppage reason is required when downtime is logged.", err_QUALITY_REQUIRED: "Quality decision and note are required.", err_RATE_LIMITED: "Too many attempts. Please wait and try again.", err_FORBIDDEN: "You do not have access to this record.", err_SERVER_ERROR: "Server error. Please try again.",
   metaDesc: "NexusFab AI: one reliable view of production, financial leakage and quality for your factory.", nav_login: "Sign in",
   notFound: "Page not found", backHome: "Back to overview",
+  ...enY,
 };
 type Dict = typeof en;
 const ar: Dict = {
   ...arX,
-  appName: "نكسس فاب AI", tagline: "نظام تشغيل التصنيع",
+  appName: "⚡ نكسس فاب AI™", tagline: "نظام تشغيل التصنيع",
   loginTitle: "تسجيل الدخول إلى خزنة المصنع", loginSub: "يعمل كل مصنع في خزنة بيانات معزولة. سجلاتك ومؤشراتك لا تظهر لأي مستأجر آخر.",
   username: "اسم مستخدم الموظف", password: "كلمة المرور", signIn: "تسجيل الدخول", signingIn: "جارٍ التحقق",
   demoAccess: "دخول تجريبي", demoNote: "مصانع نموذجية ببيانات عينة. انقر للتعبئة.",
@@ -93,6 +95,7 @@ const ar: Dict = {
   err_TARGET_NOT_MET: "لم تتحقق الكمية المستهدفة.", err_QC_PENDING: "يجب اعتماد جميع الدفعات قبل الشحن.", err_ALREADY_REVIEWED: "هذه الدفعة لها قرار بالفعل.", err_ALREADY_DISPATCHED: "تم شحن هذا الأمر مسبقاً.", err_NETWORK: "خطأ في الشبكة. تحقق من الاتصال.", err_UNKNOWN: "خطأ غير متوقع.", err_INVALID_INPUT: "بعض الحقول غير صالحة.", err_INVALID_DATE: "تاريخ أو وقت غير صالح.", err_EMPTY_LOG: "أدخل الكمية السليمة أو المرفوضات أو التوقف.", err_REASON_REQUIRED: "سبب التوقف مطلوب عند تسجيل توقف.", err_QUALITY_REQUIRED: "قرار الجودة والملاحظة مطلوبان.", err_RATE_LIMITED: "محاولات كثيرة. يرجى الانتظار ثم المحاولة.", err_FORBIDDEN: "ليست لديك صلاحية الوصول لهذا السجل.", err_SERVER_ERROR: "خطأ في الخادم. يرجى المحاولة مجدداً.",
   metaDesc: "نكسس فاب AI: رؤية واحدة موثوقة للإنتاج والتسرب المالي والجودة لمصنعك.", nav_login: "تسجيل الدخول",
   notFound: "الصفحة غير موجودة", backHome: "العودة للنظرة العامة",
+  ...arY,
 };
 export type TKey = keyof Dict;
 const dicts = { en, ar };

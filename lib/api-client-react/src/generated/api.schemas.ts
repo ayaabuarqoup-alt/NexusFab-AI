@@ -300,6 +300,15 @@ export const AnalystInputLanguage = {
   ar: 'ar',
 } as const;
 
+export type AnalystInputMachineId = typeof AnalystInputMachineId[keyof typeof AnalystInputMachineId];
+
+
+export const AnalystInputMachineId = {
+  m1: 'm1',
+  m2: 'm2',
+  m3: 'm3',
+} as const;
+
 export interface AnalystInput {
   /**
      * @minLength 1
@@ -307,7 +316,23 @@ export interface AnalystInput {
      */
   question: string;
   language: AnalystInputLanguage;
+  jobId?: string;
+  machineId?: AnalystInputMachineId;
+  staff?: string;
+  fromDate?: string;
+  toDate?: string;
 }
+
+export type AnalystAnswerIntent = typeof AnalystAnswerIntent[keyof typeof AnalystAnswerIntent];
+
+
+export const AnalystAnswerIntent = {
+  summary: 'summary',
+  bottlenecks: 'bottlenecks',
+  operators: 'operators',
+  trends: 'trends',
+  unsupported: 'unsupported',
+} as const;
 
 export interface AnalystAnswer {
   answer: string;
@@ -316,9 +341,31 @@ export interface AnalystAnswer {
   generatedAt: string;
   answerEn: string;
   answerAr: string;
+  intent: AnalystAnswerIntent;
+  evidence: ProductionLog[];
+  evidenceTruncated: boolean;
 }
 
 export interface Message {
   message: string;
+}
+
+export interface RegistrationInput {
+  /**
+     * @minLength 3
+     * @maxLength 64
+     * @pattern ^[a-z0-9][a-z0-9_-]{2,63}$
+     */
+  tenantId: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  factoryName: string;
+  /**
+     * @minLength 12
+     * @maxLength 128
+     */
+  password: string;
 }
 

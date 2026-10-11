@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { pool } from "@workspace/db";
-import { LoginBody, LoginResponse, GetSessionResponse } from "@workspace/api-zod";
+import { LoginBody, LoginResponse, GetSessionResponse, RegisterFactoryBody } from "@workspace/api-zod";
+import { randomBytes, randomUUID } from "node:crypto";
+import { audit, encrypt, hashPassword, type Vault } from "../lib/vault";
+import { OperationError } from "./operations";
 import { clearSession, createSession, loginLimit, tokenHash, verifyPassword } from "../middlewares/factory-auth";
 
 const router = Router();
@@ -9,6 +12,36 @@ function session(res: import("express").Response) {
 }
 router.get("/auth/session", (_req, res) => {
   res.json(session(res));
+});
+router.post("/auth/register", loginLimit, async (req, res): Promise<void> => {
+  const input = RegisterFactoryBody.safeParse(req.body);
+  if (!input.success || !input.data.factoryName.trim()) throw new OperationError("INVALID_INPUT");
+  if (res.locals.factory) throw new OperationError("ALREADY_AUTHENTICATED", 409);
+  const { tenantId, password } = input.data;
+  if (["factory_carton", "factory_plastics"].includes(tenantId)) throw new OperationError("FACTORY_UNAVAILABLE", 409);
+  const factoryName = input.data.factoryName.trim(), userId = randomUUID();
+  // A master password is the owner's credential, never a client-side encryption key.
+  const ownerHash = hashPassword(password);
+  const vault: Vault = { jobs: [], logs: [], audit: [] };
+  audit(vault, { userId, userName: factoryName }, "factory_registered", tenantId);
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("INSERT INTO factory_vaults(id,name,password_hash,payload) VALUES($1,$2,$3,$4)",
+      [tenantId, factoryName, hashPassword(randomBytes(32).toString("hex")), encrypt(tenantId, vault)]);
+    // Tenant ID doubles as the globally unique owner username. Never adopt an
+    // existing user's or factory's identity; uniqueness failure rolls back both.
+    await client.query("INSERT INTO factory_users(id,factory_id,username,name,role,password_hash) VALUES($1,$2,$3,$4,'owner',$5)",
+      [userId, tenantId, tenantId, factoryName, ownerHash]);
+    await createSession(res, tenantId, userId, client);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    clearSession(res);
+    if ((error as { code?: string }).code === "23505") throw new OperationError("FACTORY_UNAVAILABLE", 409);
+    throw error;
+  } finally { client.release(); }
+  res.json(LoginResponse.parse({ authenticated: true, factory: tenantId, factoryName, userId, userName: factoryName, role: "owner" }));
 });
 router.post("/auth/login", loginLimit, async (req, res): Promise<void> => {
   const parsed = LoginBody.safeParse(req.body);

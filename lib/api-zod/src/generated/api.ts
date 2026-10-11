@@ -418,10 +418,26 @@ export const askAnalystBodyQuestionMax = 1000;
 
 export const AskAnalystBody = zod.object({
   "question": zod.string().min(1).max(askAnalystBodyQuestionMax),
-  "language": zod.enum(['en', 'ar'])
+  "language": zod.enum(['en', 'ar']),
+  "jobId": zod.string().optional(),
+  "machineId": zod.enum(['m1', 'm2', 'm3']).optional(),
+  "staff": zod.string().optional(),
+  "fromDate": zod.string().optional(),
+  "toDate": zod.string().optional()
 })
 
 export const askAnalystResponseSourceCountMin = 0;
+
+export const askAnalystResponseEvidenceItemStaffMax = 100;
+
+export const askAnalystResponseEvidenceItemGoodQtyMin = 0;
+
+export const askAnalystResponseEvidenceItemRejectsMin = 0;
+
+export const askAnalystResponseEvidenceItemDowntimeMinutesMin = 0;
+export const askAnalystResponseEvidenceItemDowntimeMinutesMax = 1440;
+
+export const askAnalystResponseEvidenceItemReasonMax = 500;
 
 
 
@@ -430,7 +446,56 @@ export const AskAnalystResponse = zod.object({
   "sourceCount": zod.number().int().min(askAnalystResponseSourceCountMin),
   "generatedAt": zod.string(),
   "answerEn": zod.string(),
-  "answerAr": zod.string()
+  "answerAr": zod.string(),
+  "intent": zod.enum(['summary', 'bottlenecks', 'operators', 'trends', 'unsupported']),
+  "evidence": zod.array(zod.object({
+  "id": zod.string(),
+  "jobId": zod.string(),
+  "staff": zod.string().min(1).max(askAnalystResponseEvidenceItemStaffMax),
+  "date": zod.string(),
+  "time": zod.string(),
+  "goodQty": zod.number().int().min(askAnalystResponseEvidenceItemGoodQtyMin),
+  "rejects": zod.number().int().min(askAnalystResponseEvidenceItemRejectsMin),
+  "downtimeMinutes": zod.number().min(askAnalystResponseEvidenceItemDowntimeMinutesMin).max(askAnalystResponseEvidenceItemDowntimeMinutesMax),
+  "reason": zod.string().max(askAnalystResponseEvidenceItemReasonMax),
+  "machineId": zod.string(),
+  "qcStatus": zod.enum(['pending', 'approved', 'rejected']),
+  "qcNote": zod.string(),
+  "createdBy": zod.string().optional(),
+  "reviewedBy": zod.string().optional(),
+  "reviewerName": zod.string().optional(),
+  "reviewedAt": zod.string().optional(),
+  "createdAt": zod.string()
+})),
+  "evidenceTruncated": zod.boolean()
+})
+
+
+export const registerFactoryBodyTenantIdMin = 3;
+export const registerFactoryBodyTenantIdMax = 64;
+
+
+export const registerFactoryBodyTenantIdRegExp = new RegExp('^[a-z0-9][a-z0-9_-]{2,63}$');
+export const registerFactoryBodyFactoryNameMax = 100;
+
+export const registerFactoryBodyPasswordMin = 12;
+export const registerFactoryBodyPasswordMax = 128;
+
+
+
+export const RegisterFactoryBody = zod.object({
+  "tenantId": zod.string().min(registerFactoryBodyTenantIdMin).max(registerFactoryBodyTenantIdMax).regex(registerFactoryBodyTenantIdRegExp),
+  "factoryName": zod.string().min(1).max(registerFactoryBodyFactoryNameMax),
+  "password": zod.string().min(registerFactoryBodyPasswordMin).max(registerFactoryBodyPasswordMax)
+})
+
+export const RegisterFactoryResponse = zod.object({
+  "userId": zod.string().optional(),
+  "userName": zod.string().optional(),
+  "role": zod.enum(['owner', 'operator', 'quality_inspector', '']).optional(),
+  "authenticated": zod.boolean(),
+  "factory": zod.string(),
+  "factoryName": zod.string()
 })
 
 

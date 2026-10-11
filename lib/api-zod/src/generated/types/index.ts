@@ -7,8 +7,10 @@
 
 export * from './activationInput';
 export * from './analystAnswer';
+export * from './analystAnswerIntent';
 export * from './analystInput';
 export * from './analystInputLanguage';
+export * from './analystInputMachineId';
 export * from './auditEvent';
 export * from './dailyProduction';
 export * from './healthStatus';
@@ -26,6 +28,7 @@ export * from './productionLog';
 export * from './productionLogQcStatus';
 export * from './qualityInput';
 export * from './qualityInputStatus';
+export * from './registrationInput';
 export * from './session';
 export * from './sessionRole';
 export * from './staffDowntime';

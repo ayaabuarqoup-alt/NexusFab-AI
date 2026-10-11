@@ -36,9 +36,9 @@ Factory users create jobs, record production and stoppages, approve or reject ba
 ## Before live factory use
 
 - Example factory accounts and sample records are development-only seeds. Do not publish public demo passwords as live credentials.
-- Add private account provisioning and individually attributable owner/operator/inspector access before use with sensitive factory records.
+- Factory onboarding now supports public registration of a new, empty tenant and its owner. The Tenant ID is the owner's sign-in username; staff still use individual invitations and owner/operator/quality-inspector permissions. Existing factory identities cannot be claimed through signup.
 - SESSION_SECRET is also the root used to derive per-factory vault encryption keys. Back it up securely; do not rotate it without decrypting and re-encrypting existing vaults in a controlled migration. Losing it makes existing vaults unreadable.
-- The copilot is a deterministic simulation based exclusively on authenticated factory data, not an external LLM.
+- The copilot is deterministic record analysis, not an external LLM. It supports scoped totals, recorded downtime concentrations, operator yield and recorded-date trends, with timestamped evidence. It must not claim validated root causes, labor efficiency or future failures from incomplete logs.
 - Machinery fatigue is an illustrative heuristic, not a validated failure predictor or safety control.
 - Native date/time picker chrome follows browser/OS locale; app labels and date displays follow the selected English/Arabic language.
 

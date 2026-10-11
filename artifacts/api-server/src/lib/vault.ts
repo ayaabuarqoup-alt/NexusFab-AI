@@ -11,6 +11,7 @@ export type MachineState = ReturnType<typeof UpdateMachineStatusResponse.parse>;
 export interface FactoryNotification {
   id: string; kind: "production_issue" | "machine_status" | "production_status"; title: string; message: string;
   targetId: string; actorName: string; createdAt: string; recipientIds: string[]; emailEnabled: boolean;
+  escalationDeadline?: string;
 }
 export type ProductionPlan = ReturnType<typeof CreatePlanResponse.parse>;
 export type OeeSetting = ReturnType<typeof SaveOeeSettingBody.parse>;

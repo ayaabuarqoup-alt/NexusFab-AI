@@ -28,6 +28,7 @@ import type {
   HealthStatus,
   Invitation,
   Issue,
+  IssueEscalationInput,
   IssueInput,
   Job,
   JobInput,
@@ -2165,6 +2166,89 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getCreateIssueMutationOptions(options));
+    }
+
+export const getUpdateIssueEscalationUrl = (id: string,) => {
+
+
+
+
+  return `/api/issues/${id}/escalation`
+}
+
+export const updateIssueEscalation = async (id: string,
+    issueEscalationInput: IssueEscalationInput, options?: Parameters<typeof customFetch>[1]): Promise<Issue> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Issue>(getUpdateIssueEscalationUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(issueEscalationInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateIssueEscalationMutationKey = () => ['updateIssueEscalation'] as const;
+
+export const getUpdateIssueEscalationMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateIssueEscalation>>, TError,UpdateIssueEscalationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateIssueEscalation>>, TError,UpdateIssueEscalationMutationVariables, TContext> => {
+
+const mutationKey = getUpdateIssueEscalationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateIssueEscalation>>, UpdateIssueEscalationMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateIssueEscalation(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateIssueEscalationMutationResult = NonNullable<Awaited<ReturnType<typeof updateIssueEscalation>>>
+    export type UpdateIssueEscalationMutationBody = BodyType<IssueEscalationInput>
+    export type UpdateIssueEscalationMutationError = ErrorType<unknown>
+    export type UpdateIssueEscalationMutationVariables = {id: string;data: BodyType<IssueEscalationInput>}
+
+    export const useUpdateIssueEscalation = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateIssueEscalation>>, TError,UpdateIssueEscalationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateIssueEscalation>>,
+        TError,
+        UpdateIssueEscalationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateIssueEscalationMutationOptions(options));
     }
 
 export const getResolveIssueUrl = (id: string,) => {

@@ -675,6 +675,11 @@ export const listIssuesResponseDescriptionMax = 2000;
 
 
 export const ListIssuesResponseItem = zod.object({
+  "assignedTo": zod.string().nullish(),
+  "assignedToName": zod.string().nullish(),
+  "escalationDeadline": zod.string().nullish(),
+  "nextReminderAt": zod.string().nullish(),
+  "lastEscalatedAt": zod.string().nullish(),
   "machineId": zod.enum(['m1', 'm2', 'm3']),
   "jobId": zod.string().optional(),
   "logId": zod.string().optional(),
@@ -715,11 +720,54 @@ export const createIssueResponseDescriptionMax = 2000;
 
 
 export const CreateIssueResponse = zod.object({
+  "assignedTo": zod.string().nullish(),
+  "assignedToName": zod.string().nullish(),
+  "escalationDeadline": zod.string().nullish(),
+  "nextReminderAt": zod.string().nullish(),
+  "lastEscalatedAt": zod.string().nullish(),
   "machineId": zod.enum(['m1', 'm2', 'm3']),
   "jobId": zod.string().optional(),
   "logId": zod.string().optional(),
   "title": zod.string().min(1).max(createIssueResponseTitleMax),
   "description": zod.string().min(1).max(createIssueResponseDescriptionMax),
+  "severity": zod.enum(['low', 'normal', 'high', 'critical']),
+  "id": zod.string(),
+  "status": zod.enum(['open', 'resolved']),
+  "createdBy": zod.string(),
+  "createdByName": zod.string(),
+  "createdAt": zod.string(),
+  "resolvedBy": zod.string().optional(),
+  "resolvedAt": zod.string().optional(),
+  "resolutionNote": zod.string().optional()
+})
+
+
+export const UpdateIssueEscalationParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const UpdateIssueEscalationBody = zod.object({
+  "assignedTo": zod.string().nullable(),
+  "escalationDeadline": zod.coerce.date().nullable()
+})
+
+export const updateIssueEscalationResponseTitleMax = 160;
+
+export const updateIssueEscalationResponseDescriptionMax = 2000;
+
+
+
+export const UpdateIssueEscalationResponse = zod.object({
+  "assignedTo": zod.string().nullish(),
+  "assignedToName": zod.string().nullish(),
+  "escalationDeadline": zod.string().nullish(),
+  "nextReminderAt": zod.string().nullish(),
+  "lastEscalatedAt": zod.string().nullish(),
+  "machineId": zod.enum(['m1', 'm2', 'm3']),
+  "jobId": zod.string().optional(),
+  "logId": zod.string().optional(),
+  "title": zod.string().min(1).max(updateIssueEscalationResponseTitleMax),
+  "description": zod.string().min(1).max(updateIssueEscalationResponseDescriptionMax),
   "severity": zod.enum(['low', 'normal', 'high', 'critical']),
   "id": zod.string(),
   "status": zod.enum(['open', 'resolved']),
@@ -751,6 +799,11 @@ export const resolveIssueResponseDescriptionMax = 2000;
 
 
 export const ResolveIssueResponse = zod.object({
+  "assignedTo": zod.string().nullish(),
+  "assignedToName": zod.string().nullish(),
+  "escalationDeadline": zod.string().nullish(),
+  "nextReminderAt": zod.string().nullish(),
+  "lastEscalatedAt": zod.string().nullish(),
   "machineId": zod.enum(['m1', 'm2', 'm3']),
   "jobId": zod.string().optional(),
   "logId": zod.string().optional(),

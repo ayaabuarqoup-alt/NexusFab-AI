@@ -19,6 +19,7 @@ export * from './getKpisParams';
 export * from './healthStatus';
 export * from './invitation';
 export * from './issue';
+export * from './issueEscalationInput';
 export * from './issueInput';
 export * from './issueInputMachineId';
 export * from './issueInputSeverity';

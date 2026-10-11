@@ -5,6 +5,7 @@ import { useResolveIssue, getListIssuesQueryKey, useListJobs, getListJobsQueryKe
 import { useI18n, errorMessage, type TKey } from "@/lib/i18n";
 import { Empty, ErrorState, PageHeader, Panel, Pill, Sk, inputCls, sevTone, useFmt, useProtected, useRole, PermNote } from "@/components/common";
 import { IssueForm } from "@/components/issue-form";
+import { IssueEscalation } from "@/components/issue-escalation";
 import { useIssues } from "@/pages/home";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,7 @@ function IssueCard({ i, jobName }: { i: Issue; jobName?: string }) {
         <div><dt className="text-muted-foreground">{t("linkedLog")}</dt><dd dir="ltr" className="num truncate rtl:text-end">{i.logId || "—"}</dd></div>
         <div><dt className="text-muted-foreground">{t("reportedBy")}</dt><dd className="truncate font-medium">{i.createdByName || i.createdBy}</dd></div>
       </dl>
+      <IssueEscalation issue={i} />
       {i.status === "resolved" ? (
         <div className="mt-3 rounded-md bg-[hsl(var(--ok)/0.08)] px-3 py-2 text-xs" data-testid={`text-resolution-${i.id}`}>
           <span className="font-medium">{t("resolvedBy")}: {i.resolvedBy || "—"}</span> · <span className="num">{fmt(i.resolvedAt)}</span>

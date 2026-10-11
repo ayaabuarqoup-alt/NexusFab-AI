@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
-import { UpdateJobBody, UpdateShippingBody, UpdateMachineStatusBody, CreateIssueBody, ResolveIssueBody } from "@workspace/api-zod";
+import { UpdateJobBody, UpdateShippingBody, UpdateMachineStatusBody, CreateIssueBody, ResolveIssueBody, UpdateIssueEscalationBody } from "@workspace/api-zod";
+import { cancelEscalationEmails } from "../lib/escalations";
 import { requireFactory, requireRoles } from "../middlewares/factory-auth";
 import { audit, loadVault, mutateVault, type MachineState } from "../lib/vault";
 import { enqueueAlert } from "../lib/notifications";
@@ -107,14 +108,43 @@ router.post("/issues", requireRoles("owner", "operator", "quality_inspector"), a
   }, actor(res, ["owner", "operator", "quality_inspector"]));
   res.json(result);
 });
+router.patch("/issues/:id/escalation", requireRoles("owner"), async (req, res) => {
+  const p = UpdateIssueEscalationBody.safeParse(req.body);
+  if (!p.success || (p.data.escalationDeadline && !Number.isFinite(+p.data.escalationDeadline))) throw new OperationError("INVALID_INPUT");
+  res.json(await mutateVault(res.locals.factory, async (v, client) => {
+    const issue = v.issues?.find(i => i.id === req.params.id);
+    if (!issue) throw new OperationError("NOT_FOUND", 404);
+    if (issue.status !== "open") throw new OperationError("ALREADY_RESOLVED", 409);
+    if (p.data.escalationDeadline && !["high", "critical"].includes(issue.severity)) throw new OperationError("INVALID_INPUT");
+    let name: string | null = null;
+    if (p.data.assignedTo) {
+      const staff = await client.query(`SELECT name FROM factory_users WHERE id=$1 AND factory_id=$2
+        AND active=true AND password_hash IS NOT NULL`, [p.data.assignedTo, res.locals.factory]);
+      if (!staff.rows[0]) throw new OperationError("INVALID_INPUT");
+      name = staff.rows[0].name;
+    }
+    const deadline = p.data.escalationDeadline ? new Date(p.data.escalationDeadline).toISOString() : null;
+    const before = { assignedTo: issue.assignedTo ?? null, escalationDeadline: issue.escalationDeadline ?? null };
+    if (before.assignedTo === p.data.assignedTo && before.escalationDeadline === deadline) return issue;
+    if (before.escalationDeadline !== deadline) {
+      await cancelEscalationEmails(v, client, res.locals.factory, issue.id);
+      issue.nextReminderAt = deadline;
+    }
+    Object.assign(issue, { assignedTo: p.data.assignedTo, assignedToName: name, escalationDeadline: deadline });
+    audit(v, identity(res), "issue_escalation_updated", issue.id, JSON.stringify({ before, after: p.data }));
+    return issue;
+  }, actor(res, ["owner"])));
+});
 router.post("/issues/:id/resolve", requireRoles("owner", "quality_inspector"), async (req, res) => {
   const p = ResolveIssueBody.safeParse(req.body);
   if (!p.success || !p.data.note.trim()) throw new OperationError("INVALID_INPUT");
-  res.json(await mutateVault(res.locals.factory, v => {
+  res.json(await mutateVault(res.locals.factory, async (v, client) => {
     const issue = v.issues?.find(i => i.id === req.params.id);
     if (!issue) throw new OperationError("NOT_FOUND", 404);
     if (issue.status === "resolved") throw new OperationError("ALREADY_RESOLVED", 409);
     Object.assign(issue, { status: "resolved", resolvedBy: res.locals.userName, resolvedAt: new Date().toISOString(), resolutionNote: p.data.note.trim() });
+    issue.nextReminderAt = null;
+    await cancelEscalationEmails(v, client, res.locals.factory, issue.id);
     audit(v, identity(res), "issue_resolved", issue.id, p.data.note.trim());
     return issue;
   }, actor(res, ["owner", "quality_inspector"])));

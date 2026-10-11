@@ -4,6 +4,7 @@ import { seedFactories } from "./lib/vault";
 import { migrateAccounts } from "./lib/accounts";
 import { startRealtime } from "./lib/realtime";
 import { startEmailWorker } from "./lib/email-worker";
+import { startEscalationWorker } from "./lib/escalations";
 
 const rawPort = process.env["PORT"];
 
@@ -23,7 +24,8 @@ await migrateAccounts();
 await seedFactories();
 const stopRealtime = await startRealtime();
 const stopEmailWorker = startEmailWorker();
-process.once("SIGTERM", () => { stopEmailWorker(); void stopRealtime().finally(() => process.exit(0)); });
+const stopEscalationWorker = startEscalationWorker();
+process.once("SIGTERM", () => { stopEscalationWorker(); stopEmailWorker(); void stopRealtime().finally(() => process.exit(0)); });
 app.listen(port, (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");

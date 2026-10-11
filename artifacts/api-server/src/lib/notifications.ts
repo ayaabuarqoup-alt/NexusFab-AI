@@ -7,7 +7,8 @@ export const validEmail = (email: string) => email.length <= 254 && /^[A-Za-z0-9
 export async function enqueueAlert(v: Vault, client: DatabaseClient, factoryId: string,
   input: Omit<FactoryNotification, "id" | "createdAt" | "recipientIds" | "emailEnabled">) {
   const { rows } = await client.query(`SELECT id,email FROM factory_users WHERE factory_id=$1 AND active=true
-    AND password_hash IS NOT NULL AND COALESCE(roles,ARRAY[role]) && ARRAY['owner','quality_inspector','production_planner']::text[]`, [factoryId]);
+    AND password_hash IS NOT NULL AND COALESCE(roles,ARRAY[role]) && $2::text[]`, [factoryId,
+      input.escalationDeadline ? ["owner", "quality_inspector"] : ["owner", "quality_inspector", "production_planner"]]);
   const settings = await client.query("SELECT email_alerts_enabled FROM factory_vaults WHERE id=$1", [factoryId]);
   const notification: FactoryNotification = { ...input, id: randomUUID(), createdAt: new Date().toISOString(),
     recipientIds: rows.map(r => r.id), emailEnabled: settings.rows[0].email_alerts_enabled };

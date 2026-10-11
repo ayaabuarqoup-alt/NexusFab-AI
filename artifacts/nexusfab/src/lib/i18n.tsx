@@ -3,6 +3,7 @@ import { enX, arX } from "./i18n-account";
 import { enY, arY } from "./i18n-ops";
 import { enZ, arZ } from "./i18n-roles";
 import { enP, arP } from "./i18n-plan";
+import { enE, arE } from "./i18n-escalation";
 
 export type Lang = "en" | "ar";
 
@@ -54,6 +55,7 @@ const en = {
   ...enY,
   ...enZ,
   ...enP,
+  ...enE,
 };
 type Dict = typeof en;
 const ar: Dict = {
@@ -102,6 +104,7 @@ const ar: Dict = {
   ...arY,
   ...arZ,
   ...arP,
+  ...arE,
 };
 export type TKey = keyof Dict;
 const dicts = { en, ar };

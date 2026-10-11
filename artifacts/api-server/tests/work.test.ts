@@ -10,6 +10,7 @@ import { deliverEmail } from "../src/lib/email-worker";
 import { EmailFailure, encodeAlertEmail } from "../src/lib/alert-email";
 import { startRealtime } from "../src/lib/realtime";
 import { migrateAccounts } from "../src/lib/accounts";
+import { processEscalations } from "../src/lib/escalations";
 const tenant = `work_${randomUUID()}`, foreign = `${tenant}_foreign`, password = randomUUID();
 let server: ReturnType<typeof app.listen>, base: string, stopLive: () => Promise<void>;
 const cookies: Record<string,string> = {};
@@ -97,6 +98,110 @@ test("work orders, QC, issue resolution, and shipping enforce active-role and ap
   const audit=(await req("/audit")).data;
   assert.ok(audit.some((a:{action:string})=>a.action==="login_succeeded"));
   assert.ok(audit.some((a:{action:string;detail:string})=>a.action==="job_updated"&&a.detail.includes("Updated order")));
+});
+test("escalations are admin-configured, factory-local, persistent, idempotent, and stop on resolution", async () => {
+  await pool.query("UPDATE factory_vaults SET email_alerts_enabled=false WHERE id=$1", [tenant]);
+  const created = await req("/issues", "POST", { machineId: "m1", title: "Escalation test", description: "Critical fault", severity: "critical" });
+  const id = created.data.id;
+  const path = `/issues/${id}/escalation`;
+  const deadline = new Date(Date.now() - 60_000).toISOString();
+  const config = { assignedTo: `${tenant}_operator`, escalationDeadline: deadline };
+  assert.equal((await req(path, "PATCH", config, "operator")).status, 403);
+  assert.equal((await req(path, "PATCH", config, "quality_inspector")).status, 403);
+  assert.equal((await req(path, "PATCH", config, "foreign")).status, 404);
+  assert.equal((await req(path, "PATCH", { ...config, assignedTo: `${tenant}_foreign` })).status, 400);
+  assert.equal((await req(path, "PATCH", { ...config, escalationDeadline: "invalid" })).status, 400);
+  const low = await req("/issues", "POST", { machineId: "m1", title: "Low issue", description: "Check later", severity: "low" });
+  assert.equal((await req(`/issues/${low.data.id}/escalation`, "PATCH", config)).status, 400);
+  const updated = await req(path, "PATCH", config);
+  assert.equal(updated.status, 200);
+  assert.equal(updated.data.assignedToName, "operator");
+  const now = new Date();
+  await Promise.all([processEscalations(tenant, now), processEscalations(tenant, now)]);
+  let vault = await loadVault(tenant);
+  let reminders = vault.notifications!.filter(n => n.targetId === id && n.escalationDeadline);
+  assert.equal(reminders.length, 1);
+  assert.deepEqual(new Set(reminders[0].recipientIds), new Set([`${tenant}_owner`, `${tenant}_quality_inspector`]));
+  assert.equal(reminders[0].emailEnabled, false);
+  assert.equal((await pool.query("SELECT id FROM factory_email_outbox WHERE notification_id=$1", [reminders[0].id])).rowCount, 0);
+  const next = vault.issues!.find(i => i.id === id)!.nextReminderAt;
+  assert.equal((await req(path, "PATCH", config)).status, 200);
+  assert.equal((await loadVault(tenant)).issues!.find(i => i.id === id)!.nextReminderAt, next);
+  // A fresh invocation recovers durable state, not an in-memory timer.
+  await processEscalations(tenant, new Date(+now + 1000));
+  assert.equal((await loadVault(tenant)).notifications!.filter(n => n.targetId === id && n.escalationDeadline).length, 1);
+  await pool.query("UPDATE factory_users SET email=lower(role)||'@example.com' WHERE factory_id=$1", [tenant]);
+  await pool.query("UPDATE factory_vaults SET email_alerts_enabled=true WHERE id=$1", [tenant]);
+  await processEscalations(tenant, new Date(+now + 25 * 3600000));
+  vault = await loadVault(tenant);
+  reminders = vault.notifications!.filter(n => n.targetId === id && n.escalationDeadline);
+  assert.equal(reminders.length, 2);
+  const queued = await pool.query("SELECT * FROM factory_email_outbox WHERE notification_id=$1", [reminders[0].id]);
+  assert.equal(queued.rowCount, 2);
+  await pool.query("UPDATE factory_email_outbox SET status='sending' WHERE id=$1", [queued.rows[0].id]);
+  let accepted = 0;
+  let releaseProvider!: () => void, providerStarted!: () => void;
+  const providerGate = new Promise<void>(resolve => { releaseProvider = resolve; });
+  const started = new Promise<void>(resolve => { providerStarted = resolve; });
+  const delivery = deliverEmail(queued.rows[0], async message => {
+    assert.match(message.message, /Overdue issue/);
+    accepted++;
+    providerStarted();
+    await providerGate;
+    return "mock-escalation-accepted";
+  });
+  await started;
+  const writes = Promise.all([
+    req("/machines/m2/status", "PATCH", { status: "running", note: "Independent update during stalled email" }, "operator"),
+    req(`/issues/${id}/resolve`, "POST", { note: "Fixed" }, "quality_inspector"),
+  ]);
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const responsive = await Promise.race([
+      writes.then(results => results.every(r => r.status === 200)),
+      new Promise<boolean>(resolve => { timeout = setTimeout(() => resolve(false), 1500); }),
+    ]);
+    assert.equal(responsive, true, "resolution and unrelated writes must finish while provider is stalled");
+    assert.equal((await pool.query("SELECT status FROM factory_email_outbox WHERE id=$1", [queued.rows[0].id])).rows[0].status, "sending");
+  } finally {
+    clearTimeout(timeout);
+    releaseProvider();
+    await delivery;
+    await writes;
+  }
+  assert.equal(accepted, 1);
+  assert.equal((await pool.query("SELECT status FROM factory_email_outbox WHERE id=$1", [queued.rows[0].id])).rows[0].status, "sent");
+  assert.equal((await loadVault(tenant)).issues!.find(i => i.id === id)!.nextReminderAt, null);
+  assert.equal((await pool.query("SELECT status FROM factory_email_outbox WHERE id=$1", [queued.rows[1].id])).rows[0].status, "cancelled");
+  let sends = 0;
+  await deliverEmail(queued.rows[1], async () => { sends++; return "unexpected"; });
+  assert.equal(sends, 0);
+  await processEscalations(tenant, new Date(+now + 72 * 3600000));
+  assert.equal((await loadVault(tenant)).notifications!.filter(n => n.targetId === id && n.escalationDeadline).length, 2);
+  assert.equal((await req(path, "PATCH", config)).status, 409);
+  const audit = (await req("/audit")).data;
+  assert.ok(audit.some((a: {action: string; targetId: string}) => a.action === "issue_escalation_updated" && a.targetId === id));
+  assert.equal((await loadVault(foreign)).notifications?.some(n => n.targetId === id) ?? false, false);
+  const optional = await req("/issues", "POST", { machineId: "m1", title: "Optional escalation", description: "Check config changes", severity: "high" });
+  const optionalPath = `/issues/${optional.data.id}/escalation`;
+  await req(optionalPath, "PATCH", config);
+  await processEscalations(tenant, now);
+  const optionalReminder = (await loadVault(tenant)).notifications!.find(n => n.targetId === optional.data.id && n.escalationDeadline)!;
+  const later = new Date(+now + 48 * 3600000).toISOString();
+  assert.equal((await req(optionalPath, "PATCH", { ...config, escalationDeadline: later })).status, 200);
+  assert.ok((await pool.query("SELECT status FROM factory_email_outbox WHERE notification_id=$1", [optionalReminder.id])).rows.every(r => r.status === "cancelled"));
+  const cleared = await req(optionalPath, "PATCH", { assignedTo: null, escalationDeadline: null });
+  assert.equal(cleared.status, 200);
+  assert.equal(cleared.data.assignedTo, null);
+  assert.equal(cleared.data.escalationDeadline, null);
+  assert.equal(cleared.data.nextReminderAt, null);
+  await processEscalations(tenant, new Date(+now + 72 * 3600000));
+  assert.equal((await loadVault(tenant)).notifications!.filter(n => n.targetId === optional.data.id && n.escalationDeadline).length, 1);
+  await pool.query("UPDATE factory_vaults SET email_alerts_enabled=false WHERE id=$1", [tenant]);
+  await pool.query("UPDATE factory_users SET email='' WHERE factory_id=$1", [tenant]);
+  // Leave the shared fixture's existing delivery tests independent of this scenario.
+  const testNotifications = (await loadVault(tenant)).notifications!.filter(n => [id, optional.data.id, low.data.id].includes(n.targetId)).map(n => n.id);
+  await pool.query("DELETE FROM factory_email_outbox WHERE factory_id=$1 AND notification_id=ANY($2::text[])", [tenant, testNotifications]);
 });
 test("notification reads are per user; email settings and retries are admin-only",async()=>{
   const n=(await req("/notifications")).data[0];

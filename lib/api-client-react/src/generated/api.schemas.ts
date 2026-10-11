@@ -564,6 +564,13 @@ export interface IssueInput {
   severity: IssueInputSeverity;
 }
 
+export interface IssueEscalationInput {
+  /** @nullable */
+  assignedTo: string | null;
+  /** @nullable */
+  escalationDeadline: string | null;
+}
+
 export type IssueMachineId = typeof IssueMachineId[keyof typeof IssueMachineId];
 
 
@@ -592,6 +599,16 @@ export const IssueStatus = {
 } as const;
 
 export interface Issue {
+  /** @nullable */
+  assignedTo?: string | null;
+  /** @nullable */
+  assignedToName?: string | null;
+  /** @nullable */
+  escalationDeadline?: string | null;
+  /** @nullable */
+  nextReminderAt?: string | null;
+  /** @nullable */
+  lastEscalatedAt?: string | null;
   machineId: IssueMachineId;
   jobId?: string;
   logId?: string;

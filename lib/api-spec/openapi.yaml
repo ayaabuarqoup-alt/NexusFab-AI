@@ -699,6 +699,14 @@
         }
       }
     },
+    "/issues/{id}/escalation": {
+      "patch": {
+        "operationId": "updateIssueEscalation",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/IssueEscalationInput" } } } },
+        "responses": { "200": { "description": "Updated issue", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Issue" } } } } }
+      }
+    },
     "/issues/{id}/resolve": {
       "post": {
         "operationId": "resolveIssue",
@@ -2253,9 +2261,22 @@
           "severity"
         ]
       },
+      "IssueEscalationInput": {
+        "type": "object",
+        "required": ["assignedTo", "escalationDeadline"],
+        "properties": {
+          "assignedTo": { "type": ["string", "null"] },
+          "escalationDeadline": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
       "Issue": {
         "type": "object",
         "properties": {
+          "assignedTo": { "type": ["string", "null"] },
+          "assignedToName": { "type": ["string", "null"] },
+          "escalationDeadline": { "type": ["string", "null"] },
+          "nextReminderAt": { "type": ["string", "null"] },
+          "lastEscalatedAt": { "type": ["string", "null"] },
           "machineId": {
             "type": "string",
             "enum": [

@@ -9,6 +9,16 @@ import type { IssueSeverity } from './issueSeverity';
 import type { IssueStatus } from './issueStatus';
 
 export interface Issue {
+  /** @nullable */
+  assignedTo?: string | null;
+  /** @nullable */
+  assignedToName?: string | null;
+  /** @nullable */
+  escalationDeadline?: string | null;
+  /** @nullable */
+  nextReminderAt?: string | null;
+  /** @nullable */
+  lastEscalatedAt?: string | null;
   machineId: IssueMachineId;
   jobId?: string;
   logId?: string;

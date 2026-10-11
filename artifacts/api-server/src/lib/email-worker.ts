@@ -5,6 +5,7 @@ import { approvedRoles } from "./roles";
 import { EmailFailure, findSentAlert, sendAlertEmail, type AlertEmail } from "./alert-email";
 import { factoryEvents } from "./realtime";
 import { logger } from "./logger";
+import type { DatabaseClient } from "./roles";
 
 export interface OutboxRecord { id: string; factory_id: string; notification_id: string; user_id: string; email: string; attempts: number }
 async function finish(row: OutboxRecord, status: string, code = "", providerId: string | null = null, delay = 120) {
@@ -14,19 +15,61 @@ async function finish(row: OutboxRecord, status: string, code = "", providerId: 
   await pool.query("SELECT pg_notify('nexus_updates',$1)", [JSON.stringify({ factoryId: row.factory_id })]);
 }
 export async function deliverEmail(row: OutboxRecord, send: (email: AlertEmail) => Promise<string> = sendAlertEmail) {
-  const { rows } = await pool.query(`SELECT u.email,u.active,u.password_hash,u.roles,u.role,f.email_alerts_enabled,f.payload,f.name
+  const snapshot = await pool.query("SELECT payload FROM factory_vaults WHERE id=$1", [row.factory_id]);
+  const escalation = snapshot.rows[0] && decrypt(row.factory_id, snapshot.rows[0].payload).notifications
+    ?.find(n => n.id === row.notification_id)?.escalationDeadline;
+  if (!escalation) {
+    const message = await prepareEmail(row, pool);
+    if (message) await sendAndRecord(row, message, send);
+    return;
+  }
+  // Serialize only validation and the start of an attempt with resolution.
+  // Never await provider I/O while holding the factory lock.
+  const client = await pool.connect();
+  let delivery: Promise<{ error?: unknown }> | undefined;
+  try {
+    await client.query("BEGIN");
+    const { rows } = await client.query("SELECT payload FROM factory_vaults WHERE id=$1 FOR UPDATE", [row.factory_id]);
+    const v = rows[0] ? decrypt(row.factory_id, rows[0].payload) : undefined;
+    const n = v?.notifications?.find(n => n.id === row.notification_id);
+    const issue = v?.issues?.find(i => i.id === n?.targetId);
+    const job = await client.query("SELECT status,last_error FROM factory_email_outbox WHERE id=$1 AND factory_id=$2", [row.id, row.factory_id]);
+    if (job.rows[0]?.status !== "sending" || job.rows[0]?.last_error === "PROVIDER_IN_FLIGHT") return;
+    if (!issue || issue.status !== "open" || issue.escalationDeadline !== escalation) {
+      await finish(row, "cancelled", "ESCALATION_STOPPED");
+      return;
+    }
+    const message = await prepareEmail(row, client, true);
+    if (!message) return;
+    // Persist the in-flight boundary before calling the provider. Cancellation
+    // must not mislabel a possibly accepted attempt as an unsent cancellation.
+    // This uses a separate commit so a crash/rollback cannot erase that boundary.
+    await pool.query("UPDATE factory_email_outbox SET last_error='PROVIDER_IN_FLIGHT',updated_at=NOW() WHERE id=$1 AND status='sending'", [row.id]);
+    delivery = sendAndRecord(row, message, send).then(() => ({}), error => ({ error }));
+  } finally {
+    await client.query("ROLLBACK");
+    client.release();
+  }
+  const outcome = await delivery;
+  if (outcome?.error) throw outcome.error;
+}
+async function prepareEmail(row: OutboxRecord, client: DatabaseClient, escalation = false): Promise<AlertEmail | undefined> {
+  const { rows } = await client.query(`SELECT u.email,u.active,u.password_hash,u.roles,u.role,f.email_alerts_enabled,f.payload,f.name
     FROM factory_users u JOIN factory_vaults f ON f.id=u.factory_id WHERE u.id=$1 AND f.id=$2`, [row.user_id, row.factory_id]);
   const user = rows[0];
-  if (!user || !user.active || !user.password_hash || !approvedRoles(user).some(r => ["owner", "quality_inspector", "production_planner"].includes(r))) {
+  if (!user || !user.active || !user.password_hash || !approvedRoles(user).some(r => (escalation ? ["owner", "quality_inspector"] : ["owner", "quality_inspector", "production_planner"]).includes(r))) {
     await finish(row, "cancelled", "RECIPIENT_NO_LONGER_APPROVED"); return;
   }
   if (!user.email_alerts_enabled) { await finish(row, "blocked", "EMAIL_DISABLED"); return; }
   if (!validEmail(user.email) || user.email !== row.email) { await finish(row, "blocked", "RECIPIENT_EMAIL_CHANGED"); return; }
   const n = decrypt(row.factory_id, user.payload).notifications?.find(n => n.id === row.notification_id && n.recipientIds.includes(row.user_id));
   if (!n) { await finish(row, "cancelled", "NOTIFICATION_NOT_FOUND"); return; }
+  return { id: row.id, recipient: row.email, factoryName: user.name,
+    title: n.title, message: n.message, actorName: n.actorName, createdAt: n.createdAt };
+}
+async function sendAndRecord(row: OutboxRecord, message: AlertEmail, send: (email: AlertEmail) => Promise<string>) {
   try {
-    const providerId = await send({ id: row.id, recipient: row.email, factoryName: user.name,
-      title: n.title, message: n.message, actorName: n.actorName, createdAt: n.createdAt });
+    const providerId = await send(message);
     await finish(row, "sent", "", providerId);
   } catch (error) {
     const failure = error instanceof EmailFailure ? error : new EmailFailure("SEND_RESULT_UNKNOWN", true);

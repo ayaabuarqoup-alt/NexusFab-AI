@@ -1015,3 +1015,147 @@ export const ListPlanningOperatorsResponseItem = zod.object({
 export const ListPlanningOperatorsResponse = zod.array(ListPlanningOperatorsResponseItem)
 
 
+export const GetKpisQueryParams = zod.object({
+  "from": zod.coerce.string().optional(),
+  "to": zod.coerce.string().optional()
+})
+
+export const GetKpisResponse = zod.object({
+  "from": zod.string(),
+  "to": zod.string(),
+  "asOf": zod.string(),
+  "daily": zod.array(zod.object({
+  "date": zod.string(),
+  "goodQty": zod.number(),
+  "rejects": zod.number(),
+  "reportedDowntimeMinutes": zod.number(),
+  "passRate": zod.number().nullable(),
+  "failRate": zod.number().nullable()
+})),
+  "machines": zod.array(zod.object({
+  "machineId": zod.string(),
+  "plannedMinutes": zod.number(),
+  "runningMinutes": zod.number(),
+  "stoppedMinutes": zod.number(),
+  "maintenanceMinutes": zod.number(),
+  "unknownMinutes": zod.number(),
+  "goodQty": zod.number(),
+  "rejects": zod.number(),
+  "availability": zod.number().nullable(),
+  "performance": zod.number().nullable(),
+  "quality": zod.number().nullable(),
+  "oee": zod.number().nullable(),
+  "reason": zod.enum(['ready', 'not_configured', 'no_planned_time', 'incomplete_status', 'no_output', 'no_runtime', 'invalid_cycle_rate'])
+}))
+})
+
+
+export const listOeeSettingsResponseIdealCycleSecondsExclusiveMin = 0;
+export const listOeeSettingsResponseIdealCycleSecondsMax = 86400;
+
+
+
+export const ListOeeSettingsResponseItem = zod.object({
+  "machineId": zod.enum(['m1', 'm2', 'm3']),
+  "idealCycleSeconds": zod.number().gt(listOeeSettingsResponseIdealCycleSecondsExclusiveMin).max(listOeeSettingsResponseIdealCycleSecondsMax),
+  "shiftStart": zod.string(),
+  "shiftEnd": zod.string()
+})
+export const ListOeeSettingsResponse = zod.array(ListOeeSettingsResponseItem)
+
+
+export const saveOeeSettingBodyIdealCycleSecondsExclusiveMin = 0;
+export const saveOeeSettingBodyIdealCycleSecondsMax = 86400;
+
+
+
+export const SaveOeeSettingBody = zod.object({
+  "machineId": zod.enum(['m1', 'm2', 'm3']),
+  "idealCycleSeconds": zod.number().gt(saveOeeSettingBodyIdealCycleSecondsExclusiveMin).max(saveOeeSettingBodyIdealCycleSecondsMax),
+  "shiftStart": zod.string(),
+  "shiftEnd": zod.string()
+})
+
+export const saveOeeSettingResponseIdealCycleSecondsExclusiveMin = 0;
+export const saveOeeSettingResponseIdealCycleSecondsMax = 86400;
+
+
+
+export const SaveOeeSettingResponse = zod.object({
+  "machineId": zod.enum(['m1', 'm2', 'm3']),
+  "idealCycleSeconds": zod.number().gt(saveOeeSettingResponseIdealCycleSecondsExclusiveMin).max(saveOeeSettingResponseIdealCycleSecondsMax),
+  "shiftStart": zod.string(),
+  "shiftEnd": zod.string()
+})
+
+
+export const ListPasskeysResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "createdAt": zod.string(),
+  "lastUsedAt": zod.string().nullable(),
+  "rpId": zod.string()
+})
+export const ListPasskeysResponse = zod.array(ListPasskeysResponseItem)
+
+
+export const DeletePasskeyParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const DeletePasskeyResponse = zod.object({
+  "message": zod.string()
+})
+
+
+export const passkeyRegistrationOptionsBodyPasswordMax = 256;
+
+export const passkeyRegistrationOptionsBodyNameMax = 80;
+
+
+
+export const PasskeyRegistrationOptionsBody = zod.object({
+  "password": zod.string().min(1).max(passkeyRegistrationOptionsBodyPasswordMax),
+  "name": zod.string().min(1).max(passkeyRegistrationOptionsBodyNameMax)
+})
+
+export const PasskeyRegistrationOptionsResponse = zod.record(zod.string(), zod.unknown())
+
+
+export const VerifyPasskeyRegistrationBody = zod.record(zod.string(), zod.unknown())
+
+export const VerifyPasskeyRegistrationResponse = zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "createdAt": zod.string(),
+  "lastUsedAt": zod.string().nullable(),
+  "rpId": zod.string()
+})
+
+
+export const PasskeyLoginOptionsResponse = zod.record(zod.string(), zod.unknown())
+
+
+export const VerifyPasskeyLoginBody = zod.record(zod.string(), zod.unknown())
+
+export const VerifyPasskeyLoginResponse = zod.object({
+  "userId": zod.string().optional(),
+  "userName": zod.string().optional(),
+  "role": zod.enum(['owner', 'operator', 'quality_inspector', '', 'production_planner']).optional(),
+  "authenticated": zod.boolean(),
+  "factory": zod.string(),
+  "factoryName": zod.string(),
+  "availableRoles": zod.array(zod.enum(['owner', 'operator', 'quality_inspector', 'production_planner'])),
+  "requiresRoleSelection": zod.boolean(),
+  "email": zod.string().optional()
+})
+
+
+export const DownloadExportParams = zod.object({
+  "kind": zod.enum(['reports', 'plans', 'audit']),
+  "format": zod.enum(['pdf', 'xlsx'])
+})
+
+export const DownloadExportResponse = zod.unknown()
+
+

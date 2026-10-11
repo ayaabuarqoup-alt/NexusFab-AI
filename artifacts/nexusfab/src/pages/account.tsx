@@ -8,6 +8,7 @@ import {
 } from "@workspace/api-client-react";
 import { useI18n, errorMessage, type TKey } from "@/lib/i18n";
 import { Empty, ErrorState, Field, PageHeader, Panel, Pill, Sk, inputCls, useAuthed, useRole, broadcastAuth, PermNote } from "@/components/common";
+import { PasskeyPanel } from "@/components/passkeys";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -312,7 +313,7 @@ export default function Account() {
         </div>
       )}
       <div className="grid gap-4 lg:grid-cols-[340px_1fr]">
-        <div className="space-y-4"><ProfilePanel /><PasswordPanel demo={demo} /></div>
+        <div className="space-y-4"><ProfilePanel /><PasswordPanel demo={demo} /><PasskeyPanel demo={demo} /></div>
         {isOwner && !demo ? <StaffPanel selfId={session?.userId} /> : (
           <Panel title={t("staffTitle")}><PermNote>{demo ? t("err_DEMO_ACCOUNT") : t("ownerOnly")}</PermNote></Panel>
         )}

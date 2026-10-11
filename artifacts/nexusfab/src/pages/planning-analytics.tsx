@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { FlaskConical } from "lucide-react";
 import { useGetSummary, getGetSummaryQueryKey, useListLogs, getListLogsQueryKey, useListJobs, getListJobsQueryKey } from "@workspace/api-client-react";
 import { useI18n, type TKey } from "@/lib/i18n";
+import { KpiAnalytics } from "@/components/oee";
 import { Empty, ErrorState, PageHeader, Panel, Plot, Sk, useProtected } from "@/components/common";
 import { useMachineStates } from "@/components/machine-status";
 import { usePlans } from "@/pages/planning";
@@ -85,6 +86,7 @@ export default function PlanningAnalytics() {
   return (
     <div className="space-y-6">
       <PageHeader title={t("anTitle")} sub={t("anSub")} />
+      <KpiAnalytics canConfigure={false} />
       <Panel title={t("forecastTitle")} right={<FlaskConical className="h-3.5 w-3.5 text-muted-foreground" />}>
         {logs.isError ? <ErrorState error={logs.error} onRetry={() => logs.refetch()} /> : !logs.data ? <Sk className="h-64" /> : !fc ? <Empty title={t("fcNeedData")} sub={t("fcLimits")} /> : (
           <div className="grid gap-5 lg:grid-cols-[1fr_320px]">

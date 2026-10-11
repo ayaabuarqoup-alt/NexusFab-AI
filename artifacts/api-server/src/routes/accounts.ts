@@ -137,6 +137,8 @@ router.post("/staff/:id/reset",requireRoles("owner"),privateAccount,async(req,re
     const found = await client.query("SELECT id FROM factory_users WHERE id=$1 AND factory_id=$2 AND active=true",[req.params.id,res.locals.factory]);
     if (!found.rowCount) throw new OperationError("NOT_FOUND",404);
     await client.query("UPDATE factory_users SET password_hash=NULL WHERE id=$1",[req.params.id]);
+    await client.query("DELETE FROM factory_passkeys WHERE user_id=$1",[req.params.id]);
+    await client.query("DELETE FROM factory_passkey_challenges WHERE user_id=$1",[req.params.id]);
     await client.query("DELETE FROM factory_sessions WHERE user_id=$1",[req.params.id]);
     record("password_reset",String(req.params.id));
     return invitation(client,String(req.params.id));

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node tests/run.mjs && node tests/run.mjs --roles && node tests/run.mjs --upgrade && node tests/run.mjs --work",
+    "test": "node tests/run.mjs && node tests/run.mjs --roles && node tests/run.mjs --upgrade && node tests/run.mjs --work && node tests/run.mjs --premium",
     "test:browser": "node tests/run.mjs --browser",
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
@@ -13,12 +13,15 @@
   },
   "dependencies": {
     "@replit/connectors-sdk": "^0.4.3",
+    "@simplewebauthn/server": "^14.0.3",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "drizzle-orm": "catalog:",
+    "exceljs": "^4.4.0",
     "express": "^5.2.1",
+    "pdfkit": "^0.20.2",
     "pino": "^9.14.0",
     "pino-http": "^10.5.0",
     "zod": "catalog:"
@@ -28,6 +31,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "catalog:",
+    "@types/pdfkit": "^0.17.6",
     "esbuild": "0.28.2",
     "esbuild-plugin-pino": "^2.3.3",
     "pino-pretty": "^13.1.3",

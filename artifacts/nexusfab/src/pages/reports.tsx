@@ -5,6 +5,7 @@ import { useI18n, type TKey } from "@/lib/i18n";
 import { ErrorState, Panel, Pill, Sk, ghostCls, downloadCsv, msTone, useProtected } from "@/components/common";
 import { useMachineStates } from "@/components/machine-status";
 import { useIssues } from "@/pages/home";
+import { ExportBar } from "@/components/exports";
 import Dashboard from "@/pages/dashboard";
 
 export default function Reports() {
@@ -38,6 +39,7 @@ export default function Reports() {
   const card = (label: string, v: string, id: string) => <div className="rounded-md border bg-secondary/30 p-3"><div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</div><div className="num mt-1 text-2xl font-semibold" data-testid={id}>{v}</div></div>;
   return (
     <div className="space-y-6">
+      <ExportBar kinds={["reports"]} compact />
       <Dashboard />
       <div className="rise flex flex-wrap items-center justify-between gap-3 border-t pt-6">
         <div><h2 className="text-xl font-semibold tracking-tight">{t("reportsTitle")}</h2><p className="text-sm text-muted-foreground">{t("reportsSub")}</p></div>

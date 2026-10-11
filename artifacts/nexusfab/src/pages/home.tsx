@@ -12,6 +12,8 @@ import { FlagIssueButton } from "@/components/issue-form";
 import { EditJobButton, ShippingControl } from "@/components/job-edit";
 import { useNotifications } from "@/components/alerts";
 import { qcTone } from "@/pages/production";
+import { ExportBar } from "@/components/exports";
+import { KpiAnalytics } from "@/components/oee";
 import { cn } from "@/lib/utils";
 import { usePlans, usePlanningOperators, Timeline, psTone, useFmtUtc } from "@/pages/planning";
 
@@ -82,6 +84,7 @@ function AdminHome() {
   return (
     <div className="space-y-6">
       <PageHeader title={t("homeAdminTitle")} sub={t("homeAdminSub")} />
+      <ExportBar kinds={["reports", "plans", "audit"]} />
       <Grid>
         <Kpi label={t("kpiOpenIssues")} value={open?.length} tone="warn" href="/issues" testId="kpi-open-issues" />
         <Kpi label={t("kpiCritical")} value={open?.filter((i) => i.severity === "critical").length} tone="bad" href="/issues" testId="kpi-critical" />
@@ -120,6 +123,7 @@ function AdminHome() {
         <Kpi label={t("goodQty")} value={s.data?.goodQty} tone="ok" href="/reports" testId="kpi-good" />
         <Kpi label={t("rejects")} value={s.data?.rejects} tone="bad" href="/reports" testId="kpi-rejects" />
       </Grid>
+      <KpiAnalytics canConfigure />
       <LiveMachines editable={false} />
     </div>
   );
@@ -262,6 +266,7 @@ function PlannerHome() {
   return (
     <div className="space-y-6">
       <PageHeader title={t("homePlanTitle")} sub={t("homePlanSub")} />
+      <ExportBar kinds={["reports", "plans"]} />
       <Grid>
         <Kpi label={t("kpiScheduled")} value={plans.data?.filter((p) => p.status === "scheduled").length} href="/planning" testId="kpi-scheduled" />
         <Kpi label={t("kpiDrafts")} value={plans.data?.filter((p) => p.status === "draft").length} tone="warn" href="/planning" testId="kpi-drafts" />

@@ -4,3 +4,4 @@
 - [Role selection](role-selection.md) — mandatory explicit choice from owner-approved roles; grants do not confer simultaneous session permissions.
 - [Operational alerts](operational-alerts.md) — factory-local alerts, explicit email activation, and safe recovery of uncertain sends.
 - [Production planning](production-planning.md) — fourth owner-approved role; UTC schedules, resource conflict checks, and explicitly limited forecasts.
+- [Premium analytics and passkeys](premium-decisions.md) — OEE coverage rules, export permissions and hostname-bound biometric sign-in.

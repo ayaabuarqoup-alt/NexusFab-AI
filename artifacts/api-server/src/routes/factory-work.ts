@@ -71,6 +71,13 @@ router.patch("/machines/:id/status", requireRoles("owner", "operator"), async (r
     if (!changed && machine.note === p.data.note.trim()) return machine;
     Object.assign(machine, { status: p.data.status, note: p.data.note.trim(), updatedAt: new Date().toISOString(), updatedBy: res.locals.userName });
     v.machineStates = states;
+    if (changed) {
+      const history = (v.machineHistory ??= []);
+      if (before.updatedAt && !history.some(h => h.machineId === machine.id)) {
+        history.push({ machineId: machine.id, status: before.status, at: before.updatedAt });
+      }
+      history.push({ machineId: machine.id, status: machine.status, at: machine.updatedAt });
+    }
     audit(v, identity(res), "machine_status_updated", machine.id, JSON.stringify({ before, after: machine }));
     if (changed && ["stopped", "maintenance"].includes(machine.status)) {
       await enqueueAlert(v, client, res.locals.factory, { kind: "machine_status", title: `${machine.id}: ${machine.status}`,

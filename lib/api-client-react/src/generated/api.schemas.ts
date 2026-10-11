@@ -796,3 +796,104 @@ export interface PlanningOperator {
   name: string;
 }
 
+export type OeeSettingMachineId = typeof OeeSettingMachineId[keyof typeof OeeSettingMachineId];
+
+
+export const OeeSettingMachineId = {
+  m1: 'm1',
+  m2: 'm2',
+  m3: 'm3',
+} as const;
+
+export interface OeeSetting {
+  machineId: OeeSettingMachineId;
+  /**
+     * @maximum 86400
+     * @exclusiveMinimum 0
+     */
+  idealCycleSeconds: number;
+  shiftStart: string;
+  shiftEnd: string;
+}
+
+export interface KpiDay {
+  date: string;
+  goodQty: number;
+  rejects: number;
+  reportedDowntimeMinutes: number;
+  /** @nullable */
+  passRate: number | null;
+  /** @nullable */
+  failRate: number | null;
+}
+
+export type OeeMachineReason = typeof OeeMachineReason[keyof typeof OeeMachineReason];
+
+
+export const OeeMachineReason = {
+  ready: 'ready',
+  not_configured: 'not_configured',
+  no_planned_time: 'no_planned_time',
+  incomplete_status: 'incomplete_status',
+  no_output: 'no_output',
+  no_runtime: 'no_runtime',
+  invalid_cycle_rate: 'invalid_cycle_rate',
+} as const;
+
+export interface OeeMachine {
+  machineId: string;
+  plannedMinutes: number;
+  runningMinutes: number;
+  stoppedMinutes: number;
+  maintenanceMinutes: number;
+  unknownMinutes: number;
+  goodQty: number;
+  rejects: number;
+  /** @nullable */
+  availability: number | null;
+  /** @nullable */
+  performance: number | null;
+  /** @nullable */
+  quality: number | null;
+  /** @nullable */
+  oee: number | null;
+  reason: OeeMachineReason;
+}
+
+export interface KpiReport {
+  from: string;
+  to: string;
+  asOf: string;
+  daily: KpiDay[];
+  machines: OeeMachine[];
+}
+
+export interface Passkey {
+  id: string;
+  name: string;
+  createdAt: string;
+  /** @nullable */
+  lastUsedAt: string | null;
+  rpId: string;
+}
+
+export interface PasskeyEnrollment {
+  /**
+     * @minLength 1
+     * @maxLength 256
+     */
+  password: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  name: string;
+}
+
+export interface WebAuthnPayload { [key: string]: unknown }
+
+export type GetKpisParams = {
+from?: string;
+to?: string;
+};
+

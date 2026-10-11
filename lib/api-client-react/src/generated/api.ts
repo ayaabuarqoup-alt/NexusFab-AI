@@ -24,12 +24,14 @@ import type {
   AnalystInput,
   AuditEvent,
   EmailDelivery,
+  GetKpisParams,
   HealthStatus,
   Invitation,
   Issue,
   IssueInput,
   Job,
   JobInput,
+  KpiReport,
   LogInput,
   LoginInput,
   MachineState,
@@ -38,6 +40,9 @@ import type {
   Notification,
   NotificationSettings,
   NotificationSettingsInput,
+  OeeSetting,
+  Passkey,
+  PasskeyEnrollment,
   PasswordInput,
   PlanInput,
   PlanningOperator,
@@ -53,7 +58,8 @@ import type {
   StaffInput,
   StaffMember,
   StaffUpdate,
-  Summary
+  Summary,
+  WebAuthnPayload
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -3052,6 +3058,766 @@ export function useListPlanningOperators<TData = Awaited<ReturnType<typeof listP
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListPlanningOperatorsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetKpisUrl = (params?: GetKpisParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/analytics/kpis?${stringifiedParams}` : `/api/analytics/kpis`
+}
+
+export const getKpis = async (params?: GetKpisParams, options?: Parameters<typeof customFetch>[1]): Promise<KpiReport> => {
+
+  return customFetch<KpiReport>(getGetKpisUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetKpisQueryKey = (params?: GetKpisParams,) => {
+    return [
+    `/api/analytics/kpis`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetKpisQueryOptions = <TData = Awaited<ReturnType<typeof getKpis>>, TError = ErrorType<unknown>>(params?: GetKpisParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getKpis>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetKpisQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getKpis>>> = ({ signal }) => getKpis(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getKpis>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetKpisQueryResult = NonNullable<Awaited<ReturnType<typeof getKpis>>>
+export type GetKpisQueryError = ErrorType<unknown>
+
+
+
+export function useGetKpis<TData = Awaited<ReturnType<typeof getKpis>>, TError = ErrorType<unknown>>(
+ params?: GetKpisParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getKpis>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetKpisQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListOeeSettingsUrl = () => {
+
+
+
+
+  return `/api/analytics/oee-settings`
+}
+
+export const listOeeSettings = async ( options?: Parameters<typeof customFetch>[1]): Promise<OeeSetting[]> => {
+
+  return customFetch<OeeSetting[]>(getListOeeSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListOeeSettingsQueryKey = () => {
+    return [
+    `/api/analytics/oee-settings`
+    ] as const;
+    }
+
+
+export const getListOeeSettingsQueryOptions = <TData = Awaited<ReturnType<typeof listOeeSettings>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOeeSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListOeeSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listOeeSettings>>> = ({ signal }) => listOeeSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listOeeSettings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListOeeSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof listOeeSettings>>>
+export type ListOeeSettingsQueryError = ErrorType<unknown>
+
+
+
+export function useListOeeSettings<TData = Awaited<ReturnType<typeof listOeeSettings>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listOeeSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListOeeSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSaveOeeSettingUrl = () => {
+
+
+
+
+  return `/api/analytics/oee-settings`
+}
+
+export const saveOeeSetting = async (oeeSetting: OeeSetting, options?: Parameters<typeof customFetch>[1]): Promise<OeeSetting> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<OeeSetting>(getSaveOeeSettingUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(oeeSetting)
+  }
+);}
+
+
+
+
+
+export const getSaveOeeSettingMutationKey = () => ['saveOeeSetting'] as const;
+
+export const getSaveOeeSettingMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveOeeSetting>>, TError,SaveOeeSettingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveOeeSetting>>, TError,SaveOeeSettingMutationVariables, TContext> => {
+
+const mutationKey = getSaveOeeSettingMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveOeeSetting>>, SaveOeeSettingMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveOeeSetting(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveOeeSettingMutationResult = NonNullable<Awaited<ReturnType<typeof saveOeeSetting>>>
+    export type SaveOeeSettingMutationBody = BodyType<OeeSetting>
+    export type SaveOeeSettingMutationError = ErrorType<unknown>
+    export type SaveOeeSettingMutationVariables = {data: BodyType<OeeSetting>}
+
+    export const useSaveOeeSetting = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveOeeSetting>>, TError,SaveOeeSettingMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof saveOeeSetting>>,
+        TError,
+        SaveOeeSettingMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSaveOeeSettingMutationOptions(options));
+    }
+
+export const getListPasskeysUrl = () => {
+
+
+
+
+  return `/api/auth/passkeys`
+}
+
+export const listPasskeys = async ( options?: Parameters<typeof customFetch>[1]): Promise<Passkey[]> => {
+
+  return customFetch<Passkey[]>(getListPasskeysUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPasskeysQueryKey = () => {
+    return [
+    `/api/auth/passkeys`
+    ] as const;
+    }
+
+
+export const getListPasskeysQueryOptions = <TData = Awaited<ReturnType<typeof listPasskeys>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPasskeys>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPasskeysQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPasskeys>>> = ({ signal }) => listPasskeys({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPasskeys>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPasskeysQueryResult = NonNullable<Awaited<ReturnType<typeof listPasskeys>>>
+export type ListPasskeysQueryError = ErrorType<unknown>
+
+
+
+export function useListPasskeys<TData = Awaited<ReturnType<typeof listPasskeys>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPasskeys>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPasskeysQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDeletePasskeyUrl = (id: string,) => {
+
+
+
+
+  return `/api/auth/passkeys/${id}`
+}
+
+export const deletePasskey = async (id: string, options?: Parameters<typeof customFetch>[1]): Promise<Message> => {
+
+  return customFetch<Message>(getDeletePasskeyUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeletePasskeyMutationKey = () => ['deletePasskey'] as const;
+
+export const getDeletePasskeyMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePasskey>>, TError,DeletePasskeyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deletePasskey>>, TError,DeletePasskeyMutationVariables, TContext> => {
+
+const mutationKey = getDeletePasskeyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePasskey>>, DeletePasskeyMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deletePasskey(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeletePasskeyMutationResult = NonNullable<Awaited<ReturnType<typeof deletePasskey>>>
+
+    export type DeletePasskeyMutationError = ErrorType<unknown>
+    export type DeletePasskeyMutationVariables = {id: string}
+
+    export const useDeletePasskey = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePasskey>>, TError,DeletePasskeyMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deletePasskey>>,
+        TError,
+        DeletePasskeyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeletePasskeyMutationOptions(options));
+    }
+
+export const getPasskeyRegistrationOptionsUrl = () => {
+
+
+
+
+  return `/api/auth/passkeys/register/options`
+}
+
+export const passkeyRegistrationOptions = async (passkeyEnrollment: PasskeyEnrollment, options?: Parameters<typeof customFetch>[1]): Promise<WebAuthnPayload> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<WebAuthnPayload>(getPasskeyRegistrationOptionsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(passkeyEnrollment)
+  }
+);}
+
+
+
+
+
+export const getPasskeyRegistrationOptionsMutationKey = () => ['passkeyRegistrationOptions'] as const;
+
+export const getPasskeyRegistrationOptionsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof passkeyRegistrationOptions>>, TError,PasskeyRegistrationOptionsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof passkeyRegistrationOptions>>, TError,PasskeyRegistrationOptionsMutationVariables, TContext> => {
+
+const mutationKey = getPasskeyRegistrationOptionsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof passkeyRegistrationOptions>>, PasskeyRegistrationOptionsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  passkeyRegistrationOptions(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PasskeyRegistrationOptionsMutationResult = NonNullable<Awaited<ReturnType<typeof passkeyRegistrationOptions>>>
+    export type PasskeyRegistrationOptionsMutationBody = BodyType<PasskeyEnrollment>
+    export type PasskeyRegistrationOptionsMutationError = ErrorType<unknown>
+    export type PasskeyRegistrationOptionsMutationVariables = {data: BodyType<PasskeyEnrollment>}
+
+    export const usePasskeyRegistrationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof passkeyRegistrationOptions>>, TError,PasskeyRegistrationOptionsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof passkeyRegistrationOptions>>,
+        TError,
+        PasskeyRegistrationOptionsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPasskeyRegistrationOptionsMutationOptions(options));
+    }
+
+export const getVerifyPasskeyRegistrationUrl = () => {
+
+
+
+
+  return `/api/auth/passkeys/register/verify`
+}
+
+export const verifyPasskeyRegistration = async (webAuthnPayload: WebAuthnPayload, options?: Parameters<typeof customFetch>[1]): Promise<Passkey> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Passkey>(getVerifyPasskeyRegistrationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(webAuthnPayload)
+  }
+);}
+
+
+
+
+
+export const getVerifyPasskeyRegistrationMutationKey = () => ['verifyPasskeyRegistration'] as const;
+
+export const getVerifyPasskeyRegistrationMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyPasskeyRegistration>>, TError,VerifyPasskeyRegistrationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyPasskeyRegistration>>, TError,VerifyPasskeyRegistrationMutationVariables, TContext> => {
+
+const mutationKey = getVerifyPasskeyRegistrationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyPasskeyRegistration>>, VerifyPasskeyRegistrationMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  verifyPasskeyRegistration(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyPasskeyRegistrationMutationResult = NonNullable<Awaited<ReturnType<typeof verifyPasskeyRegistration>>>
+    export type VerifyPasskeyRegistrationMutationBody = BodyType<WebAuthnPayload>
+    export type VerifyPasskeyRegistrationMutationError = ErrorType<unknown>
+    export type VerifyPasskeyRegistrationMutationVariables = {data: BodyType<WebAuthnPayload>}
+
+    export const useVerifyPasskeyRegistration = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyPasskeyRegistration>>, TError,VerifyPasskeyRegistrationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof verifyPasskeyRegistration>>,
+        TError,
+        VerifyPasskeyRegistrationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getVerifyPasskeyRegistrationMutationOptions(options));
+    }
+
+export const getPasskeyLoginOptionsUrl = () => {
+
+
+
+
+  return `/api/auth/passkeys/login/options`
+}
+
+export const passkeyLoginOptions = async ( options?: Parameters<typeof customFetch>[1]): Promise<WebAuthnPayload> => {
+
+  return customFetch<WebAuthnPayload>(getPasskeyLoginOptionsUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getPasskeyLoginOptionsMutationKey = () => ['passkeyLoginOptions'] as const;
+
+export const getPasskeyLoginOptionsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof passkeyLoginOptions>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof passkeyLoginOptions>>, TError,void, TContext> => {
+
+const mutationKey = getPasskeyLoginOptionsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof passkeyLoginOptions>>, void> = () => {
+
+
+          return  passkeyLoginOptions(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PasskeyLoginOptionsMutationResult = NonNullable<Awaited<ReturnType<typeof passkeyLoginOptions>>>
+
+    export type PasskeyLoginOptionsMutationError = ErrorType<unknown>
+
+
+    export const usePasskeyLoginOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof passkeyLoginOptions>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof passkeyLoginOptions>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getPasskeyLoginOptionsMutationOptions(options));
+    }
+
+export const getVerifyPasskeyLoginUrl = () => {
+
+
+
+
+  return `/api/auth/passkeys/login/verify`
+}
+
+export const verifyPasskeyLogin = async (webAuthnPayload: WebAuthnPayload, options?: Parameters<typeof customFetch>[1]): Promise<Session> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Session>(getVerifyPasskeyLoginUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(webAuthnPayload)
+  }
+);}
+
+
+
+
+
+export const getVerifyPasskeyLoginMutationKey = () => ['verifyPasskeyLogin'] as const;
+
+export const getVerifyPasskeyLoginMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyPasskeyLogin>>, TError,VerifyPasskeyLoginMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyPasskeyLogin>>, TError,VerifyPasskeyLoginMutationVariables, TContext> => {
+
+const mutationKey = getVerifyPasskeyLoginMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyPasskeyLogin>>, VerifyPasskeyLoginMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  verifyPasskeyLogin(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyPasskeyLoginMutationResult = NonNullable<Awaited<ReturnType<typeof verifyPasskeyLogin>>>
+    export type VerifyPasskeyLoginMutationBody = BodyType<WebAuthnPayload>
+    export type VerifyPasskeyLoginMutationError = ErrorType<unknown>
+    export type VerifyPasskeyLoginMutationVariables = {data: BodyType<WebAuthnPayload>}
+
+    export const useVerifyPasskeyLogin = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyPasskeyLogin>>, TError,VerifyPasskeyLoginMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof verifyPasskeyLogin>>,
+        TError,
+        VerifyPasskeyLoginMutationVariables,
+        TContext
+      > => {
+      return useMutation(getVerifyPasskeyLoginMutationOptions(options));
+    }
+
+export const getDownloadExportUrl = (kind: 'reports' | 'plans' | 'audit',
+    format: 'pdf' | 'xlsx',) => {
+
+
+
+
+  return `/api/exports/${kind}/${format}`
+}
+
+export const downloadExport = async (kind: 'reports' | 'plans' | 'audit',
+    format: 'pdf' | 'xlsx', options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getDownloadExportUrl(kind,format),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getDownloadExportQueryKey = (kind: 'reports' | 'plans' | 'audit',
+    format: 'pdf' | 'xlsx',) => {
+    return [
+    `/api/exports/${kind}/${format}`
+    ] as const;
+    }
+
+
+export const getDownloadExportQueryOptions = <TData = Awaited<ReturnType<typeof downloadExport>>, TError = ErrorType<unknown>>(kind: 'reports' | 'plans' | 'audit',
+    format: 'pdf' | 'xlsx', options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadExport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getDownloadExportQueryKey(kind,format);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof downloadExport>>> = ({ signal }) => downloadExport(kind,format, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: kind !== null && kind !== undefined && format !== null && format !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof downloadExport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type DownloadExportQueryResult = NonNullable<Awaited<ReturnType<typeof downloadExport>>>
+export type DownloadExportQueryError = ErrorType<unknown>
+
+
+
+export function useDownloadExport<TData = Awaited<ReturnType<typeof downloadExport>>, TError = ErrorType<unknown>>(
+ kind: 'reports' | 'plans' | 'audit',
+    format: 'pdf' | 'xlsx', options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof downloadExport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getDownloadExportQueryOptions(kind,format,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

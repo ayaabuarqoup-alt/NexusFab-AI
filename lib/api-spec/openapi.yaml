@@ -1000,6 +1000,274 @@
           }
         }
       }
+    },
+    "/analytics/kpis": {
+      "get": {
+        "operationId": "getKpis",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KpiReport"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/analytics/oee-settings": {
+      "get": {
+        "operationId": "listOeeSettings",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OeeSetting"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "saveOeeSetting",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OeeSetting"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OeeSetting"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/passkeys": {
+      "get": {
+        "operationId": "listPasskeys",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Passkey"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/passkeys/{id}": {
+      "delete": {
+        "operationId": "deletePasskey",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/auth/passkeys/register/options": {
+      "post": {
+        "operationId": "passkeyRegistrationOptions",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebAuthnPayload"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasskeyEnrollment"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/passkeys/register/verify": {
+      "post": {
+        "operationId": "verifyPasskeyRegistration",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Passkey"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebAuthnPayload"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/passkeys/login/options": {
+      "post": {
+        "operationId": "passkeyLoginOptions",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebAuthnPayload"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/passkeys/login/verify": {
+      "post": {
+        "operationId": "verifyPasskeyLogin",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebAuthnPayload"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exports/{kind}/{format}": {
+      "get": {
+        "operationId": "downloadExport",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "reports",
+                "plans",
+                "audit"
+              ]
+            }
+          },
+          {
+            "name": "format",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pdf",
+                "xlsx"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Download report",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2389,6 +2657,239 @@
             "type": "string"
           }
         }
+      },
+      "OeeSetting": {
+        "type": "object",
+        "properties": {
+          "machineId": {
+            "type": "string",
+            "enum": [
+              "m1",
+              "m2",
+              "m3"
+            ]
+          },
+          "idealCycleSeconds": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 86400
+          },
+          "shiftStart": {
+            "type": "string"
+          },
+          "shiftEnd": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "machineId",
+          "idealCycleSeconds",
+          "shiftStart",
+          "shiftEnd"
+        ]
+      },
+      "KpiDay": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "goodQty": {
+            "type": "number"
+          },
+          "rejects": {
+            "type": "number"
+          },
+          "reportedDowntimeMinutes": {
+            "type": "number"
+          },
+          "passRate": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "failRate": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "date",
+          "goodQty",
+          "rejects",
+          "reportedDowntimeMinutes",
+          "passRate",
+          "failRate"
+        ]
+      },
+      "OeeMachine": {
+        "type": "object",
+        "properties": {
+          "machineId": {
+            "type": "string"
+          },
+          "plannedMinutes": {
+            "type": "number"
+          },
+          "runningMinutes": {
+            "type": "number"
+          },
+          "stoppedMinutes": {
+            "type": "number"
+          },
+          "maintenanceMinutes": {
+            "type": "number"
+          },
+          "unknownMinutes": {
+            "type": "number"
+          },
+          "goodQty": {
+            "type": "number"
+          },
+          "rejects": {
+            "type": "number"
+          },
+          "availability": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "performance": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "quality": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "oee": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "not_configured",
+              "no_planned_time",
+              "incomplete_status",
+              "no_output",
+              "no_runtime",
+              "invalid_cycle_rate"
+            ]
+          }
+        },
+        "required": [
+          "machineId",
+          "plannedMinutes",
+          "runningMinutes",
+          "stoppedMinutes",
+          "maintenanceMinutes",
+          "unknownMinutes",
+          "goodQty",
+          "rejects",
+          "availability",
+          "performance",
+          "quality",
+          "oee",
+          "reason"
+        ]
+      },
+      "KpiReport": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "asOf": {
+            "type": "string"
+          },
+          "daily": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KpiDay"
+            }
+          },
+          "machines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OeeMachine"
+            }
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "asOf",
+          "daily",
+          "machines"
+        ]
+      },
+      "Passkey": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "lastUsedAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rpId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "createdAt",
+          "lastUsedAt",
+          "rpId"
+        ]
+      },
+      "PasskeyEnrollment": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "password",
+          "name"
+        ]
+      },
+      "WebAuthnPayload": {
+        "type": "object",
+        "additionalProperties": true
       }
     }
   }

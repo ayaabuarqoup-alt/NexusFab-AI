@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Building2, CheckCircle2, Factory, Info, KeyRound
 import { useLogin, useActivateAccount, useRegisterFactory } from "@workspace/api-client-react";
 import { useI18n, errorMessage } from "@/lib/i18n";
 import { LangToggle, usePageMeta } from "@/components/shell";
+import { PasskeySignIn } from "@/components/passkeys";
 import { Field, inputCls, updateSession } from "@/components/common";
 
 function Activate({ onDone }: { onDone: () => void }) {
@@ -154,6 +155,7 @@ export default function Login() {
                 {login.isPending ? t("signingIn") : t("signIn")}<ArrowRight className="h-4 w-4 rtl:rotate-180" />
               </button>
             </form>
+            <PasskeySignIn />
             </>)}
           </div>
           {mode === "login" && <div className="rise rise-2 mt-5 rounded-md border border-primary/25 bg-primary/[0.04] p-4">

@@ -3,6 +3,7 @@ import { pool } from "@workspace/db";
 import { encrypt, hashPassword } from "./vault";
 import { tokenHash } from "../middlewares/factory-auth";
 import { InviteStaffBody } from "@workspace/api-zod";
+import { migratePasskeys } from "./passkeys";
 
 // Additive and idempotent, including for existing encrypted installations.
 export async function migrateAccounts() {
@@ -21,6 +22,7 @@ export async function migrateAccounts() {
     ALTER TABLE factory_users DROP CONSTRAINT IF EXISTS factory_users_role_check;
     ALTER TABLE factory_users ADD CONSTRAINT factory_users_role_check CHECK (role IN ('owner','operator','quality_inspector','production_planner'));
   `);
+  await migratePasskeys();
 }
 
 // Local administrator only. No public factory-creation endpoint.

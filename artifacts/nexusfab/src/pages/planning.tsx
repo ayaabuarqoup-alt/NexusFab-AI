@@ -7,6 +7,7 @@ import {
   type ProductionPlan, type PlanInput, type PlanAssignment, type PlanAssignmentMachineId, type PlanningOperator, type Job,
 } from "@workspace/api-client-react";
 import { useI18n, errorMessage, type TKey } from "@/lib/i18n";
+import { ExportBar } from "@/components/exports";
 import { Empty, ErrorState, Field, PageHeader, Panel, Pill, Sk, btnCls, ghostCls, inputCls, useFmt, useProtected, useRole, MACHINE_IDS, PermNote } from "@/components/common";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -291,5 +292,5 @@ export function Schedule() {
 export default function Planning() {
   const { t } = useI18n();
   const { canPlan } = useRole();
-  return <div className="space-y-6"><PageHeader title={t("planTitle")} sub={t("planSub")} /><PlanBoard editable={canPlan} /></div>;
+  return <div className="space-y-6"><PageHeader title={t("planTitle")} sub={t("planSub")} /><ExportBar kinds={["plans"]} compact /><PlanBoard editable={canPlan} /></div>;
 }

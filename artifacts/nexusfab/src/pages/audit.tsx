@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Download, Search } from "lucide-react";
 import { useListAudit, getListAuditQueryKey } from "@workspace/api-client-react";
 import { useI18n, type TKey } from "@/lib/i18n";
+import { ExportBar } from "@/components/exports";
 import { Empty, ErrorState, Field, PageHeader, Panel, Sk, inputCls, ghostCls, downloadCsv, useFmt, useProtected } from "@/components/common";
 
 export default function Audit() {
@@ -24,6 +25,7 @@ export default function Audit() {
       <PageHeader title={t("nav_audit")} sub={t("auditPageSub")} action={
         <button className={ghostCls} disabled={!rows.length} onClick={() => downloadCsv(`audit-${new Date().toISOString().slice(0, 10)}.csv`, [["at", "actorName", "actorId", "action", "targetId", "detail"], ...rows.map((e) => [e.at, e.actorName, e.actorId, e.action, e.targetId, e.detail])])} data-testid="button-export-audit"><Download className="h-3.5 w-3.5" />{t("exportAudit")}</button>
       } />
+      <ExportBar kinds={["audit"]} compact />
       <div className="rise grid gap-3 rounded-md border bg-card p-3 sm:grid-cols-[1fr_160px_160px_auto] sm:items-end">
         <Field label={t("searchPh")}><div className="relative"><Search className="pointer-events-none absolute start-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><input className={`${inputCls} ps-8`} value={q} onChange={(e) => setQ(e.target.value)} data-testid="input-audit-search" /></div></Field>
         <Field label={t("fromDate")}><input type="date" lang={lang} className={inputCls} value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} data-testid="input-audit-from" /></Field>

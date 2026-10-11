@@ -1,0 +1,22 @@
+Please upgrade our "NexusFab AI" platform in 'main.py' to implement advanced UI/UX aesthetics, dynamic chart exploration, and an improved contextual AI engine. Maintain full English/Arabic bilingual toggle and complete data privacy for each factory tenant.
+
+Implement the following premium updates:
+
+1. Stunning & Elite Branding (Visual Identity & Emojis):
+   - Design a highly unique, premium text-based logo header using professional functional emojis as visual anchors (e.g., "⚡ NexusFab AI™ | NextGen Manufacturing OS 🏭"). 
+   - Ensure the layout is exceptionally clean, using beautiful custom markdown cards, crisp dividers (---), and intuitive spacing that makes navigation effortless on both desktops and tablets.
+
+2. Advanced Multi-Tenant Cloud Architecture (Isolated Registration):
+   - Enhance the "Onboard a New Factory" portal on the login screen. Allow any new enterprise or facility to instantly input a unique Tenant ID, Factory Name, and Master Password.
+   - Upon registration, provision a completely distinct, empty data sandbox for that factory within st.session_state. Ensure absolute zero-knowledge privacy: Factory A can NEVER under any circumstance access or view the data, orders, or logs of Factory B.
+
+3. Dynamic & Interactive Plotly Charts (Click-to-Expand Detail):
+   - Integrate a powerful Chart Exploration experience. When a user clicks, hovers, or interacts with the Plotly Pie Chart (Good vs Reject Volumetric Ratio) or the Plotly Bar Chart (Machinery Downtime Auditing by Staff), the app must dynamically reveal complete granular details.
+   - Below the charts, embed a responsive data view container that automatically updates with full breakdown statistics when checking order tracking parameters.
+
+4. Ultra-Flexible & Secure AI Copilot Terminal:
+   - Re-engineer the AI Strategy Terminal into a modular chat console or clean search interface. 
+   - The AI assistant must dynamically parse and process the precise mathematical logs and timestamps of the active logged-in factory.
+   - Ensure the AI responds strictly and exclusively based on the real-world historical inputs entered into the terminal. It must answer complex operational questions (e.g., root cause bottlenecks, operator efficiency, or hidden failure trends) with 100% factual correctness, strictly forbidding any hallucinations, imagination, or outside data leakage.
+
+Optimize the full script within 'main.py' to run flawlessly with 'streamlit run main.py' while guaranteeing state persistence on external Google Chrome tabs.

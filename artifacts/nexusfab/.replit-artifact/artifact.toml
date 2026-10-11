@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "NexusFab AI"
+description = "Bilingual manufacturing operations for isolated factory workspaces, production logs, quality approvals, downtime and contextual analytics."
+version = "1.0.0"
+id = "artifacts/nexusfab"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 20951
+
+[services.development]
+run = "pnpm --filter @workspace/nexusfab run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/nexusfab", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/nexusfab/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20951"
+BASE_PATH = "/"

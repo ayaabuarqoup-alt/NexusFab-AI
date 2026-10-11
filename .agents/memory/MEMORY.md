@@ -1,0 +1,1 @@
+- [Product decisions](nexusfab-decisions.md) — React supersedes the uploaded Streamlit brief; preserve bilingual factory isolation and honest analytics limits.

@@ -1,36 +1,766 @@
-openapi: 3.1.0
-info:
-  # Do not change the title, if the title changes, the import paths will be broken
-  title: Api
-  version: 0.1.0
-  description: API specification
-servers:
-  - url: /api
-    description: Base API path
-tags:
-  - name: health
-    description: Health operations
-paths:
-  /healthz:
-    get:
-      operationId: healthCheck
-      tags: [health]
-      summary: Health check
-      description: Returns server health status
-      responses:
-        "200":
-          description: Healthy
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/HealthStatus"
-components:
-  schemas:
-    HealthStatus:
-      type: object
-      properties:
-        status:
-          type: string
-      required:
-        - status
-
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Api",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/api"
+    }
+  ],
+  "paths": {
+    "/healthz": {
+      "get": {
+        "operationId": "healthCheck",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/session": {
+      "get": {
+        "operationId": "getSession",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "login",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "logout",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/summary": {
+      "get": {
+        "operationId": "getSummary",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Summary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs": {
+      "get": {
+        "operationId": "listJobs",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Job"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createJob",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs/{id}/dispatch": {
+      "post": {
+        "operationId": "dispatchJob",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/logs": {
+      "get": {
+        "operationId": "listLogs",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProductionLog"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createLog",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductionLog"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/logs/{id}/quality": {
+      "patch": {
+        "operationId": "reviewQuality",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductionLog"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QualityInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/analyst": {
+      "post": {
+        "operationId": "askAnalyst",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalystAnswer"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalystInput"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HealthStatus": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string"
+          }
+        }
+      },
+      "Session": {
+        "type": "object",
+        "required": [
+          "authenticated",
+          "factory",
+          "factoryName"
+        ],
+        "properties": {
+          "authenticated": {
+            "type": "boolean"
+          },
+          "factory": {
+            "type": "string"
+          },
+          "factoryName": {
+            "type": "string"
+          }
+        }
+      },
+      "LoginInput": {
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "JobInput": {
+        "type": "object",
+        "required": [
+          "name",
+          "machineId",
+          "target",
+          "startDate",
+          "dueDate",
+          "startTime"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "machineId": {
+            "type": "string"
+          },
+          "target": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "startDate": {
+            "type": "string"
+          },
+          "dueDate": {
+            "type": "string"
+          },
+          "startTime": {
+            "type": "string"
+          }
+        }
+      },
+      "Job": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "machineId",
+          "target",
+          "startDate",
+          "dueDate",
+          "startTime",
+          "status",
+          "goodQty",
+          "rejects"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "machineId": {
+            "type": "string"
+          },
+          "target": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "startDate": {
+            "type": "string"
+          },
+          "dueDate": {
+            "type": "string"
+          },
+          "startTime": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "running",
+              "completed",
+              "dispatched"
+            ]
+          },
+          "goodQty": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rejects": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "LogInput": {
+        "type": "object",
+        "required": [
+          "jobId",
+          "staff",
+          "date",
+          "time",
+          "goodQty",
+          "rejects",
+          "downtimeMinutes",
+          "reason"
+        ],
+        "properties": {
+          "jobId": {
+            "type": "string"
+          },
+          "staff": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "date": {
+            "type": "string"
+          },
+          "time": {
+            "type": "string"
+          },
+          "goodQty": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rejects": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "downtimeMinutes": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1440
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          }
+        }
+      },
+      "ProductionLog": {
+        "type": "object",
+        "required": [
+          "id",
+          "jobId",
+          "staff",
+          "date",
+          "time",
+          "goodQty",
+          "rejects",
+          "downtimeMinutes",
+          "reason",
+          "machineId",
+          "qcStatus",
+          "qcNote",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "jobId": {
+            "type": "string"
+          },
+          "staff": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "date": {
+            "type": "string"
+          },
+          "time": {
+            "type": "string"
+          },
+          "goodQty": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rejects": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "downtimeMinutes": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1440
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "machineId": {
+            "type": "string"
+          },
+          "qcStatus": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ]
+          },
+          "qcNote": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        }
+      },
+      "QualityInput": {
+        "type": "object",
+        "required": [
+          "status",
+          "note"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "rejected"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        }
+      },
+      "Machine": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "fatigueScore",
+          "risk",
+          "downtimeMinutes",
+          "rejects"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "fatigueScore": {
+            "type": "number"
+          },
+          "risk": {
+            "type": "string",
+            "enum": [
+              "stable",
+              "caution",
+              "high"
+            ]
+          },
+          "downtimeMinutes": {
+            "type": "number"
+          },
+          "rejects": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "StaffDowntime": {
+        "type": "object",
+        "required": [
+          "staff",
+          "minutes"
+        ],
+        "properties": {
+          "staff": {
+            "type": "string"
+          },
+          "minutes": {
+            "type": "number"
+          }
+        }
+      },
+      "DailyProduction": {
+        "type": "object",
+        "required": [
+          "date",
+          "goodQty",
+          "rejects"
+        ],
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "goodQty": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rejects": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "Summary": {
+        "type": "object",
+        "required": [
+          "goodQty",
+          "rejects",
+          "downtimeMinutes",
+          "financialLeak",
+          "activeJobs",
+          "pendingQuality",
+          "yieldPercent",
+          "machines",
+          "staffDowntime",
+          "dailyProduction",
+          "updatedAt"
+        ],
+        "properties": {
+          "goodQty": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "rejects": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "downtimeMinutes": {
+            "type": "number"
+          },
+          "financialLeak": {
+            "type": "number"
+          },
+          "activeJobs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "pendingQuality": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "yieldPercent": {
+            "type": "number"
+          },
+          "machines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Machine"
+            }
+          },
+          "staffDowntime": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StaffDowntime"
+            }
+          },
+          "dailyProduction": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DailyProduction"
+            }
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        }
+      },
+      "AnalystInput": {
+        "type": "object",
+        "required": [
+          "question",
+          "language"
+        ],
+        "properties": {
+          "question": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "ar"
+            ]
+          }
+        }
+      },
+      "AnalystAnswer": {
+        "type": "object",
+        "required": [
+          "answer",
+          "sourceCount",
+          "generatedAt",
+          "answerEn",
+          "answerAr"
+        ],
+        "properties": {
+          "answer": {
+            "type": "string"
+          },
+          "sourceCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "generatedAt": {
+            "type": "string"
+          },
+          "answerEn": {
+            "type": "string"
+          },
+          "answerAr": {
+            "type": "string"
+          }
+        }
+      },
+      "Message": {
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

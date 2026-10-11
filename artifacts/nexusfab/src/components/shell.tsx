@@ -5,7 +5,7 @@ import { Activity, Bot, ClipboardCheck, Factory, Gauge, LayoutDashboard, ListChe
 import { useGetSession, getGetSessionQueryKey, useGetSummary, getGetSummaryQueryKey, useLogout } from "@workspace/api-client-react";
 import { useI18n, errorMessage, type TKey } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
-import { REFRESH_MS, useProtected, sessionQuery, broadcastAuth } from "@/components/common";
+import { REFRESH_MS, useProtected, sessionQuery, updateSession } from "@/components/common";
 import { cn } from "@/lib/utils";
 
 const nav: { href: string; key: TKey; icon: typeof Gauge }[] = [
@@ -80,10 +80,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const { data: session } = useGetSession({ query: sessionQuery });
   const { toast } = useToast();
   const logout = useLogout({ mutation: { onError: (error) => toast({title:t("error"),description:errorMessage(error,t),variant:"destructive"}), onSuccess: async () => {
-    await qc.cancelQueries();
-    qc.removeQueries({ predicate: (q) => q.queryKey[0] !== getGetSessionQueryKey()[0] });
-    qc.setQueryData(getGetSessionQueryKey(), { authenticated: false, factory: "", factoryName: "" });
-    broadcastAuth();
+    await updateSession(qc, { authenticated: false, factory: "", factoryName: "" });
   } } });
   useEffect(() => setOpen(false), [loc]);
   const navKey = nav.find((n) => n.href === loc)?.key;

@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight, CheckCircle2, Factory, KeyRound, Lock } from "lu
 import { useLogin, useActivateAccount, getGetSessionQueryKey } from "@workspace/api-client-react";
 import { useI18n, errorMessage } from "@/lib/i18n";
 import { LangToggle, usePageMeta } from "@/components/shell";
-import { Field, inputCls, broadcastAuth } from "@/components/common";
+import { Field, inputCls, updateSession } from "@/components/common";
 
 function Activate({ onDone }: { onDone: () => void }) {
   const { t } = useI18n();
@@ -46,12 +46,7 @@ export default function Login() {
   const [notice, setNotice] = useState<"" | "activated" | "pwChanged">(() => {
     try { const n = sessionStorage.getItem("nf-login-notice"); sessionStorage.removeItem("nf-login-notice"); return n === "pwChanged" ? "pwChanged" : ""; } catch { return ""; }
   });
-  const login = useLogin({ mutation: { onSuccess: async (s) => {
-    await qc.cancelQueries();
-    qc.removeQueries({ predicate: (q) => q.queryKey[0] !== getGetSessionQueryKey()[0] });
-    qc.setQueryData(getGetSessionQueryKey(), s);
-    broadcastAuth();
-  } } });
+  const login = useLogin({ mutation: { onSuccess: (s) => updateSession(qc, s) } });
   const submit = (e: FormEvent) => { e.preventDefault(); if (username && password) login.mutate({ data: { username: username.trim(), password } }); };
 
   return (

@@ -4,6 +4,7 @@ import { AlertTriangle, Inbox, RotateCw } from "lucide-react";
 import { useGetSession, getGetSessionQueryKey } from "@workspace/api-client-react";
 import { useI18n, errorMessage } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import type { QueryClient } from "@tanstack/react-query";
 
 export const REFRESH_MS = 900_000;
 
@@ -11,6 +12,15 @@ export const sessionQuery = { queryKey: getGetSessionQueryKey(), staleTime: 60_0
 const AUTH_KEY = "nf-auth-event";
 export function broadcastAuth() {
   try { localStorage.setItem(AUTH_KEY, String(Date.now())); } catch { /* ignore */ }
+}
+
+export async function updateSession(qc: QueryClient, session: { authenticated: boolean; factory: string; factoryName: string }) {
+  // Keep the active session observer attached; clearing the whole cache strands it.
+  // Cancel old requests before publishing the new identity so they cannot repopulate it.
+  await qc.cancelQueries();
+  qc.removeQueries({ predicate: q => q.queryKey[0] !== getGetSessionQueryKey()[0] });
+  qc.setQueryData(getGetSessionQueryKey(), session);
+  broadcastAuth();
 }
 export function onAuthBroadcast(fn: () => void) {
   const h = (e: StorageEvent) => { if (e.key === AUTH_KEY) fn(); };

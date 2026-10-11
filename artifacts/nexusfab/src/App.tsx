@@ -38,7 +38,7 @@ function Gate() {
   const tenant = s.data?.authenticated ? `${s.data.factory}::${s.data.userId ?? ''}` : '';
   const prevTenant = useRef<string | null>(null);
   useEffect(() => {
-    if (prevTenant.current !== null && prevTenant.current !== tenant) qc.resetQueries({ predicate: (q) => q.queryKey[0] !== getGetSessionQueryKey()[0] });
+    if (prevTenant.current && prevTenant.current !== tenant) qc.resetQueries({ predicate: (q) => q.queryKey[0] !== getGetSessionQueryKey()[0] });
     prevTenant.current = tenant;
   }, [tenant, qc]);
   if (s.isLoading) return (

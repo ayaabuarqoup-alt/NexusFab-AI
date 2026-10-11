@@ -172,6 +172,11 @@ export function useRole() {
     canReview: role === "owner" || role === "quality_inspector",
     canDispatch: role === "owner",
     isOwner: role === "owner",
+    isInspector: role === "quality_inspector",
+    isOperator: role === "operator",
+    canAlerts: role === "owner" || role === "quality_inspector",
+    canEditJobs: role === "owner" || role === "operator",
+    canMachine: role === "owner" || role === "operator",
   };
 }
 
@@ -182,3 +187,18 @@ export function PermNote({ children }: { children: ReactNode }) {
     </div>
   );
 }
+
+export const btnCls = "inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:brightness-110 disabled:opacity-60";
+export const ghostCls = "inline-flex items-center gap-1.5 rounded-md border bg-card px-2.5 py-1.5 text-xs font-medium transition hover:bg-secondary disabled:opacity-50";
+export function useFmt() {
+  const { lang } = useI18n();
+  return (iso?: string) => { if (!iso) return "—"; const d = new Date(iso); return isNaN(d.getTime()) ? iso : d.toLocaleString(lang === "ar" ? "ar-EG" : "en-US", { dateStyle: "medium", timeStyle: "short" }); };
+}
+export function downloadCsv(name: string, rows: (string | number | undefined | null)[][]) {
+  const esc = (v: string | number | undefined | null) => { const s = v == null ? "" : String(v); return /[",\n]/.test(s) || /^[=+\-@]/.test(s) ? `"${(/^[=+\-@]/.test(s) ? "'" : "") + s.replace(/"/g, '""')}"` : s; };
+  const blob = new Blob(["\ufeff" + rows.map((r) => r.map(esc).join(",")).join("\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+export const sevTone = { low: "mute", normal: "info", high: "warn", critical: "bad" } as const;
+export const msTone = { unknown: "mute", running: "ok", stopped: "bad", maintenance: "warn" } as const;
+export const MACHINE_IDS = ["m1", "m2", "m3"] as const;

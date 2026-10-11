@@ -15,7 +15,7 @@ export class OperationError extends Error {
 }
 const router = Router();
 router.use(requireFactory);
-router.get("/audit", async (_req,res) => { res.json((await loadVault(res.locals.factory)).audit ?? []); });
+router.get("/audit", requireRoles("owner"), async (_req,res) => { res.json((await loadVault(res.locals.factory)).audit ?? []); });
 function validDate(s: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
   const d = new Date(s + "T00:00:00Z");
@@ -39,7 +39,7 @@ router.post("/jobs", requireRoles("owner","operator"), async (req, res): Promise
   if (!validDate(data.startDate) || !validDate(data.dueDate) || !validTime(data.startTime) || data.dueDate < data.startDate) throw new OperationError("INVALID_DATE");
   const result = await mutateVault(res.locals.factory, v => {
     const job: Job = { ...data, name: data.name.trim(), id: randomUUID(), status: "planned", goodQty: 0, rejects: 0 };
-    audit(v,{userId:res.locals.userId,userName:res.locals.userName},"job_created",job.id);
+    audit(v,{userId:res.locals.userId,userName:res.locals.userName},"job_created",job.id,JSON.stringify(job));
     v.jobs.unshift(job); return job;
   }, {userId:res.locals.userId,sessionId:res.locals.sessionId,roles:["owner","operator"]});
   res.json(CreateJobResponse.parse(result));
@@ -61,7 +61,8 @@ router.post("/logs", requireRoles("owner","operator"), async (req, res): Promise
     job.goodQty += data.goodQty; job.rejects += data.rejects;
     if (!Number.isSafeInteger(job.goodQty) || !Number.isSafeInteger(job.rejects)) throw new OperationError("INVALID_INPUT");
     job.status = job.goodQty >= job.target ? "completed" : "running";
-    audit(v,{userId:res.locals.userId,userName:res.locals.userName},"log_created",log.id);
+    job.shippingStatus = "pending";
+    audit(v,{userId:res.locals.userId,userName:res.locals.userName},"log_created",log.id,JSON.stringify(log));
     // Validate before committing so a contract mismatch cannot poison the vault.
     CreateLogResponse.parse(log);
     v.logs.unshift(log); return log;
@@ -92,6 +93,7 @@ router.post("/jobs/:id/dispatch", requireRoles("owner"), async (req, res): Promi
     const logs = v.logs.filter(l => l.jobId === job.id);
     if (job.goodQty < job.target || !logs.length || logs.some(l => l.qcStatus !== "approved")) throw new OperationError("QUALITY_REQUIRED", 409);
     job.status = "dispatched";
+    job.shippingStatus = "shipped";
     audit(v,{userId:res.locals.userId,userName:res.locals.userName},"job_dispatched",job.id);
     return job;
   }, {userId:res.locals.userId,sessionId:res.locals.sessionId,roles:["owner"]});

@@ -8,6 +8,8 @@ import {
 import { useI18n, errorMessage } from "@/lib/i18n";
 import { Empty, ErrorState, Field, PageHeader, Panel, Pill, Sk, inputCls, useProtected, useRole, PermNote } from "@/components/common";
 import { useToast } from "@/hooks/use-toast";
+import { EditJobButton, ShippingControl } from "@/components/job-edit";
+import { FlagIssueButton } from "@/components/issue-form";
 
 const stTone = { planned: "mute", running: "info", completed: "warn", dispatched: "ok" } as const;
 const today = () => new Date().toISOString().slice(0, 10);
@@ -61,11 +63,11 @@ function JobForm() {
   );
 }
 
-function JobRow({ job, pendingQc }: { job: Job; pendingQc: number }) {
+function JobRow({ job, pendingQc, hasLogs }: { job: Job; pendingQc: number; hasLogs: boolean }) {
   const { t, nf } = useI18n();
   const qc = useQueryClient();
   const { toast } = useToast();
-  const { canDispatch } = useRole();
+  const { canDispatch, canEditJobs } = useRole();
   const dispatch = useDispatchJob({ mutation: {
     onSuccess: () => { qc.invalidateQueries({ queryKey: getListJobsQueryKey() }); qc.invalidateQueries({ queryKey: getGetSummaryQueryKey() }); toast({ title: t("dispatched") }); },
     onError: (e) => toast({ title: t("error"), description: errorMessage(e, t), variant: "destructive" }),
@@ -75,7 +77,7 @@ function JobRow({ job, pendingQc }: { job: Job; pendingQc: number }) {
   const can = canDispatch && job.status !== "dispatched" && targetMet && pendingQc === 0;
   const blocker = !canDispatch ? t("permDispatch") : !targetMet ? t("dispatchBlockedTarget") : pendingQc > 0 ? `${t("dispatchBlockedQc")} (${nf(pendingQc)})` : "";
   return (
-    <div className="grid gap-3 border-b px-4 py-3 last:border-0 md:grid-cols-[1.6fr_1fr_1.4fr_auto] md:items-center" data-testid={`row-job-${job.id}`}>
+    <div className="grid gap-3 border-b px-4 py-3 last:border-0 md:grid-cols-[1.5fr_0.8fr_1.3fr_auto] lg:grid-cols-[1.5fr_0.8fr_1.3fr_1fr_auto] md:items-center" data-testid={`row-job-${job.id}`}>
       <div className="min-w-0">
         <div className="truncate font-medium">{job.name}</div>
         <div className="num text-[11px] text-muted-foreground">{job.machineId.toUpperCase()} · {job.startDate} {job.startTime} → {t("due")} {job.dueDate}</div>
@@ -86,7 +88,12 @@ function JobRow({ job, pendingQc }: { job: Job; pendingQc: number }) {
         <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-secondary"><div className="h-full origin-left bg-primary transition-transform duration-700 rtl:origin-right" style={{ transform: `scaleX(${pct / 100})` }} /></div>
         <div className="num mt-1 text-[11px] text-muted-foreground">{t("rejects")}: {nf(job.rejects)}</div>
       </div>
+      <ShippingControl job={job} pendingQc={pendingQc} />
       <div className="flex flex-col items-start gap-1 md:items-end">
+        <div className="flex flex-wrap gap-1.5">
+          {canEditJobs && <EditJobButton job={job} hasLogs={hasLogs} />}
+          <FlagIssueButton seed={{ jobId: job.id, machineId: job.machineId }} testId={`button-flag-job-${job.id}`} />
+        </div>
         {job.status === "dispatched" ? <span className="text-xs text-muted-foreground">—</span> : (
           <button onClick={() => dispatch.mutate({ id: job.id })} disabled={!can || dispatch.isPending} title={blocker || undefined} data-testid={`button-dispatch-${job.id}`}
             className="inline-flex items-center gap-1.5 rounded-md border border-primary bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition hover:brightness-110 disabled:border-border disabled:bg-secondary disabled:text-muted-foreground">
@@ -114,7 +121,7 @@ export default function Jobs() {
           {jobs.isError ? <div className="p-4"><ErrorState error={jobs.error} onRetry={() => jobs.refetch()} /></div>
             : jobs.isLoading || !jobs.data ? <div className="space-y-2 p-4">{[0, 1, 2].map((i) => <Sk key={i} className="h-14" />)}</div>
             : jobs.data.length === 0 ? <div className="p-4"><Empty title={t("noJobs")} sub={t("noJobsSub")} /></div>
-            : jobs.data.map((j) => <JobRow key={j.id} job={j} pendingQc={pendingFor(j.id)} />)}
+            : jobs.data.map((j) => <JobRow key={j.id} job={j} pendingQc={pendingFor(j.id)} hasLogs={(logs.data ?? []).some((l) => l.jobId === j.id)} />)}
         </Panel>
       </div>
     </div>

@@ -6,6 +6,7 @@ import { useI18n, errorMessage } from "@/lib/i18n";
 import { Empty, ErrorState, PageHeader, Panel, Pill, Sk, inputCls, useProtected, useRole, PermNote } from "@/components/common";
 import { qcTone } from "@/pages/production";
 import { useToast } from "@/hooks/use-toast";
+import { FlagIssueButton } from "@/components/issue-form";
 
 function ReviewCard({ log }: { log: ProductionLog }) {
   const { t, nf } = useI18n();
@@ -28,7 +29,7 @@ function ReviewCard({ log }: { log: ProductionLog }) {
     <div className="rise rounded-md border bg-card p-4 shadow-sm" data-testid={`card-review-${log.id}`}>
       <div className="flex items-start justify-between gap-2">
         <div><div className="font-medium">{log.staff}</div><div className="num text-[11px] text-muted-foreground">{log.machineId.toUpperCase()} · {log.date} {log.time}</div></div>
-        <Pill tone="warn">{t("qc_pending")}</Pill>
+        <div className="flex items-center gap-1.5"><FlagIssueButton seed={{ logId: log.id, jobId: log.jobId, machineId: log.machineId }} testId={`button-flag-log-${log.id}`} /><Pill tone="warn">{t("qc_pending")}</Pill></div>
       </div>
       <div className="mt-3 grid grid-cols-3 gap-px overflow-hidden rounded border bg-border text-center">
         {[[t("goodQty"), nf(log.goodQty)], [t("rejects"), nf(log.rejects)], ["%", nf(rate, 1)]].map(([l, v]) => (
@@ -54,7 +55,7 @@ export default function Quality() {
   const decided = (logs.data ?? []).filter((l) => l.qcStatus !== "pending");
   return (
     <div className="space-y-6">
-      <PageHeader title={t("qualityTitle")} sub={t("qualitySub")} />
+      <PageHeader title={t("qualityTitle")} sub={t("qualitySub")} action={<FlagIssueButton testId="button-flag-quality" />} />
       {logs.isError ? <ErrorState error={logs.error} onRetry={() => logs.refetch()} /> : !logs.data ? (
         <div className="grid gap-4 md:grid-cols-3"><Sk className="h-60" /><Sk className="h-60" /><Sk className="h-60" /></div>
       ) : (
@@ -75,6 +76,7 @@ export default function Quality() {
                 <span className="text-sm">{l.staff}</span>
                 <span className="num text-xs">{nf(l.goodQty)} / {nf(l.rejects)}</span>
                 <span className="flex-1 truncate text-xs text-muted-foreground md:text-end">{l.qcNote}</span>
+                <FlagIssueButton seed={{ logId: l.id, jobId: l.jobId, machineId: l.machineId }} testId={`button-flag-decided-${l.id}`} />
                 {(l.reviewerName || l.reviewedBy) && <span className="text-[11px] text-muted-foreground" data-testid={`text-reviewer-${l.id}`}>{t("reviewedBy")}: <span className="font-medium text-foreground">{l.reviewerName || l.reviewedBy}</span>{l.reviewedAt && <span className="num"> · {new Date(l.reviewedAt).toLocaleString()}</span>}</span>}
               </div>
             ))}

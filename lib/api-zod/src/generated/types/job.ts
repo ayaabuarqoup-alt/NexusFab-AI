@@ -4,6 +4,7 @@
  * Api
  * OpenAPI spec version: 1.0.0
  */
+import type { JobShippingStatus } from './jobShippingStatus';
 import type { JobStatus } from './jobStatus';
 
 export interface Job {
@@ -24,4 +25,5 @@ export interface Job {
   goodQty: number;
   /** @minimum 0 */
   rejects: number;
+  shippingStatus?: JobShippingStatus;
 }

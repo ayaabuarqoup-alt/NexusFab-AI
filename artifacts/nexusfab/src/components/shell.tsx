@@ -1,22 +1,31 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useQueryClient, useIsFetching } from "@tanstack/react-query";
-import { Activity, Bot, ClipboardCheck, Factory, Gauge, LayoutDashboard, ListChecks, LogOut, UserCog, Menu, RotateCw, X } from "lucide-react";
+import { Activity, AlertOctagon, BarChart3, Bell, Bot, ClipboardCheck, Factory, Gauge, History, LayoutDashboard, ListChecks, LogOut, UserCog, Menu, RotateCw, X } from "lucide-react";
 import { useGetSession, getGetSessionQueryKey, useGetSummary, getGetSummaryQueryKey, useLogout } from "@workspace/api-client-react";
 import { useI18n, errorMessage, type TKey } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
-import { REFRESH_MS, useProtected, sessionQuery, updateSession } from "@/components/common";
+import { REFRESH_MS, useProtected, sessionQuery, updateSession, useRole } from "@/components/common";
+import { LiveProvider } from "@/lib/live";
+import { LiveBadge, NotificationBell } from "@/components/alerts";
 import { cn } from "@/lib/utils";
 
-const nav: { href: string; key: TKey; icon: typeof Gauge }[] = [
-  { href: "/", key: "nav_dashboard", icon: LayoutDashboard },
-  { href: "/jobs", key: "nav_jobs", icon: ListChecks },
-  { href: "/production", key: "nav_production", icon: Activity },
-  { href: "/quality", key: "nav_quality", icon: ClipboardCheck },
-  { href: "/machines", key: "nav_machines", icon: Gauge },
-  { href: "/copilot", key: "nav_copilot", icon: Bot },
-  { href: "/account", key: "nav_account", icon: UserCog },
+type R = "owner" | "operator" | "quality_inspector";
+const ALL: R[] = ["owner", "operator", "quality_inspector"];
+export const nav: { href: string; key: TKey; icon: typeof Gauge; roles: R[] }[] = [
+  { href: "/", key: "nav_home", icon: LayoutDashboard, roles: ALL },
+  { href: "/reports", key: "nav_reports", icon: BarChart3, roles: ["owner"] },
+  { href: "/jobs", key: "nav_jobs", icon: ListChecks, roles: ["owner", "operator"] },
+  { href: "/production", key: "nav_production", icon: Activity, roles: ALL },
+  { href: "/quality", key: "nav_quality", icon: ClipboardCheck, roles: ["owner", "quality_inspector"] },
+  { href: "/issues", key: "nav_issues", icon: AlertOctagon, roles: ALL },
+  { href: "/machines", key: "nav_machines", icon: Gauge, roles: ALL },
+  { href: "/notifications", key: "nav_notifications", icon: Bell, roles: ["owner", "quality_inspector"] },
+  { href: "/audit", key: "nav_audit", icon: History, roles: ["owner"] },
+  { href: "/copilot", key: "nav_copilot", icon: Bot, roles: ALL },
+  { href: "/account", key: "nav_account", icon: UserCog, roles: ALL },
 ];
+const extraTitles: Record<string, TKey> = { "/jobs": "nav_jobs", "/quality": "nav_quality" };
 
 export function usePageMeta(title: string) {
   const { t } = useI18n();
@@ -79,11 +88,13 @@ export function Shell({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
   const { data: session } = useGetSession({ query: sessionQuery });
   const { toast } = useToast();
+  const { role, canAlerts } = useRole();
+  const items = nav.filter((n) => n.roles.includes(role as R));
   const logout = useLogout({ mutation: { onError: (error) => toast({title:t("error"),description:errorMessage(error,t),variant:"destructive"}), onSuccess: async () => {
     await updateSession(qc, { authenticated: false, factory: "", factoryName: "" });
   } } });
   useEffect(() => setOpen(false), [loc]);
-  const navKey = nav.find((n) => n.href === loc)?.key;
+  const navKey = nav.find((n) => n.href === loc)?.key ?? extraTitles[loc];
   usePageMeta(navKey ? t(navKey) : t("notFound"));
 
   const side = (
@@ -102,7 +113,7 @@ export function Shell({ children }: { children: ReactNode }) {
         {session?.userName && <div className="mt-2 flex items-center justify-between gap-2 border-t border-sidebar-border pt-2"><span className="truncate text-xs text-white" data-testid="text-user">{session.userName}</span><span className="shrink-0 rounded-sm bg-sidebar-accent px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-[hsl(32_95%_60%)]" data-testid="text-role">{t(session.role ? `role_${session.role}` : "role_none")}</span></div>}
       </div>
       <nav className="flex flex-col gap-0.5">
-        {nav.map(({ href, key, icon: I }) => {
+        {items.map(({ href, key, icon: I }) => {
           const active = loc === href;
           return (
             <Link key={href} href={href} data-testid={`link-${key}`}
@@ -114,6 +125,7 @@ export function Shell({ children }: { children: ReactNode }) {
         })}
       </nav>
       <div className="mt-auto flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-2"><LiveBadge dark />{canAlerts && <NotificationBell dark />}</div>
         <Countdown />
         <LangToggle dark />
         <button onClick={() => logout.mutate()} disabled={logout.isPending} data-testid="button-logout"
@@ -125,11 +137,12 @@ export function Shell({ children }: { children: ReactNode }) {
   );
 
   return (
+    <LiveProvider alerts={canAlerts}>
     <div className="min-h-[100dvh] bg-background">
       <aside className="fixed inset-y-0 start-0 z-30 hidden w-64 overflow-y-auto lg:block">{side}</aside>
       <div className="sticky top-0 z-20 flex items-center justify-between border-b bg-sidebar px-4 py-3 lg:hidden">
         <div className="flex items-center gap-2 text-white"><Factory className="h-4 w-4" /><span className="text-sm font-semibold">{t("appName")}</span></div>
-        <button onClick={() => setOpen(true)} data-testid="button-menu" className="text-white"><Menu className="h-5 w-5" /></button>
+        <div className="flex items-center gap-2"><LiveBadge dark />{canAlerts && <NotificationBell dark />}<button onClick={() => setOpen(true)} data-testid="button-menu" className="text-white"><Menu className="h-5 w-5" /></button></div>
       </div>
       <div className={cn("fixed inset-0 z-40 lg:hidden", open ? "pointer-events-auto" : "pointer-events-none")}>
         <div onClick={() => setOpen(false)} className={cn("absolute inset-0 bg-[#0F172A]/50 transition-opacity", open ? "opacity-100" : "opacity-0")} />
@@ -142,5 +155,6 @@ export function Shell({ children }: { children: ReactNode }) {
         <div key={loc} className="mx-auto max-w-[1400px] px-4 py-6 md:px-8 md:py-8">{children}</div>
       </main>
     </div>
+    </LiveProvider>
   );
 }

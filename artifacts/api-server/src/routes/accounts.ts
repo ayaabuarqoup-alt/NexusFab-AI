@@ -1,11 +1,13 @@
 import { Router } from "express";
 import { randomBytes, randomUUID } from "node:crypto";
 import { pool } from "@workspace/db";
-import { ActivateAccountBody, ChangePasswordBody, InviteStaffBody, UpdateStaffBody } from "@workspace/api-zod";
+import { ActivateAccountBody, ChangePasswordBody, InviteStaffBody, UpdateStaffBody, UpdateProfileBody } from "@workspace/api-zod";
 import { requireFactory, requireRoles, loginLimit, verifyPassword, tokenHash, clearSession } from "../middlewares/factory-auth";
 import { audit, decrypt, encrypt, hashPassword } from "../lib/vault";
 import { OperationError } from "./operations";
 import { approvedRoles, type DatabaseClient } from "../lib/roles";
+import { validEmail } from "../lib/notifications";
+import { session } from "./auth";
 
 const router = Router();
 const privateAccount: import("express").RequestHandler = (_req,res,next) => {
@@ -28,6 +30,7 @@ async function accountChange<T>(actor: Record<string, any>, fn: (client: Databas
     const vault = decrypt(actor.factory, rows[0].payload);
     const result = await fn(client, (action,target,detail="") => audit(vault,{userId:actor.userId,userName:actor.userName},action,target,detail));
     await client.query("UPDATE factory_vaults SET payload=$1 WHERE id=$2", [encrypt(actor.factory,vault),actor.factory]);
+    await client.query("SELECT pg_notify('nexus_updates',$1)", [JSON.stringify({ factoryId: actor.factory })]);
     await client.query("COMMIT"); return result;
   } catch(e) { await client.query("ROLLBACK"); throw e; } finally { client.release(); }
 }
@@ -76,19 +79,21 @@ router.post("/auth/password", requireFactory, privateAccount, loginLimit, async(
   clearSession(res); res.json({message:"Password changed. Sign in again."});
 });
 router.get("/staff",requireRoles("owner"),privateAccount,async(_req,res) => {
-  const { rows } = await pool.query("SELECT id,username,name,role,COALESCE(roles,ARRAY[role]) AS roles,active,(password_hash IS NOT NULL) AS activated FROM factory_users WHERE factory_id=$1 ORDER BY name",[res.locals.factory]);
+  const { rows } = await pool.query("SELECT id,username,name,email,role,COALESCE(roles,ARRAY[role]) AS roles,active,(password_hash IS NOT NULL) AS activated FROM factory_users WHERE factory_id=$1 ORDER BY name",[res.locals.factory]);
   res.json(rows);
 });
 router.post("/staff",requireRoles("owner"),privateAccount,async(req,res) => {
   const input = InviteStaffBody.safeParse(req.body);
   if (!input.success || !input.data.name.trim() || ["factory_carton","factory_plastics"].includes(input.data.username)) throw new OperationError("INVALID_INPUT");
   const roles = input.data.roles ?? [input.data.role];
+  const email = input.data.email?.trim().toLowerCase() ?? "";
+  if (email && !validEmail(email)) throw new OperationError("INVALID_EMAIL");
   if (!roles.includes(input.data.role) || new Set(roles).size !== roles.length) throw new OperationError("INVALID_INPUT");
   try {
     const result = await accountChange(res.locals,async(client,record) => {
       const id = randomUUID();
-      await client.query("INSERT INTO factory_users(id,factory_id,username,name,role,roles) VALUES($1,$2,$3,$4,$5,$6)",[id,res.locals.factory,input.data.username,input.data.name.trim(),roles[0],roles]);
-      record("staff_invited",id,roles.join(","));
+      await client.query("INSERT INTO factory_users(id,factory_id,username,name,role,roles,email) VALUES($1,$2,$3,$4,$5,$6,$7)",[id,res.locals.factory,input.data.username,input.data.name.trim(),roles[0],roles,email]);
+      record("staff_invited",id,JSON.stringify({ name: input.data.name.trim(), username: input.data.username, roles, email }));
       return invitation(client,id);
     }); res.json(result);
   } catch(e) { if ((e as {code?:string}).code === "23505") throw new OperationError("USERNAME_TAKEN",409); throw e; }
@@ -98,15 +103,33 @@ router.patch("/staff/:id",requireRoles("owner"),privateAccount,async(req,res) =>
   if (!input.success) throw new OperationError("INVALID_INPUT");
   if (req.params.id === res.locals.userId) throw new OperationError("SELF_CHANGE_FORBIDDEN",409);
   const roles = input.data.roles ?? [input.data.role];
+  const email = input.data.email?.trim().toLowerCase();
+  if ((email && !validEmail(email)) || (input.data.name !== undefined && !input.data.name.trim()) ||
+    (input.data.username && ["factory_carton", "factory_plastics"].includes(input.data.username))) throw new OperationError("INVALID_INPUT");
   if (!roles.includes(input.data.role) || new Set(roles).size !== roles.length) throw new OperationError("INVALID_INPUT");
-  await accountChange(res.locals,async(client,record) => {
-    const found = await client.query("SELECT id FROM factory_users WHERE id=$1 AND factory_id=$2",[req.params.id,res.locals.factory]);
+  try { await accountChange(res.locals,async(client,record) => {
+    const found = await client.query("SELECT id,name,username,email,roles,role,active FROM factory_users WHERE id=$1 AND factory_id=$2",[req.params.id,res.locals.factory]);
     if (!found.rowCount) throw new OperationError("NOT_FOUND",404);
-    await client.query("UPDATE factory_users SET role=$1,roles=$2,active=$3 WHERE id=$4",[roles[0],roles,input.data.active,req.params.id]);
+    await client.query("UPDATE factory_users SET role=$1,roles=$2,active=$3,email=COALESCE($4,email),name=COALESCE($5,name),username=COALESCE($6,username) WHERE id=$7",
+      [roles[0],roles,input.data.active,email ?? null,input.data.name?.trim() ?? null,input.data.username ?? null,req.params.id]);
     await client.query("DELETE FROM factory_sessions WHERE user_id=$1",[req.params.id]);
     await client.query("DELETE FROM factory_invites WHERE user_id=$1",[req.params.id]);
-    record("staff_updated",String(req.params.id),`${roles.join(",")}; active=${input.data.active}`);
-  }); res.json({message:"Staff updated"});
+    record("staff_updated",String(req.params.id),JSON.stringify({ before: found.rows[0], after: { ...input.data, roles } }));
+  }); } catch (error) { if ((error as { code?: string }).code === "23505") throw new OperationError("USERNAME_TAKEN",409); throw error; }
+  res.json({message:"Staff updated"});
+});
+router.patch("/profile", requireFactory, privateAccount, async (req, res) => {
+  const p = UpdateProfileBody.safeParse(req.body);
+  if (!p.success || !p.data.name.trim()) throw new OperationError("INVALID_INPUT");
+  const email = p.data.email.trim().toLowerCase();
+  if (email && !validEmail(email)) throw new OperationError("INVALID_EMAIL");
+  await accountChange(res.locals, async (client, record) => {
+    const before = await client.query("SELECT name,email FROM factory_users WHERE id=$1", [res.locals.userId]);
+    await client.query("UPDATE factory_users SET name=$1,email=$2 WHERE id=$3", [p.data.name.trim(), email, res.locals.userId]);
+    record("profile_updated", res.locals.userId, JSON.stringify({ before: before.rows[0], after: { name: p.data.name.trim(), email } }));
+  }, false);
+  res.locals.userName = p.data.name.trim(); res.locals.email = email;
+  res.json(session(res));
 });
 router.post("/staff/:id/reset",requireRoles("owner"),privateAccount,async(req,res) => {
   if (req.params.id === res.locals.userId) throw new OperationError("SELF_CHANGE_FORBIDDEN",409);

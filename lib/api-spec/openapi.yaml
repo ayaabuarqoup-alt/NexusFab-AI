@@ -522,6 +522,382 @@
           }
         }
       }
+    },
+    "/jobs/{id}": {
+      "patch": {
+        "operationId": "updateJob",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/jobs/{id}/shipping": {
+      "patch": {
+        "operationId": "updateShipping",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShippingInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/machines": {
+      "get": {
+        "operationId": "listMachineStates",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MachineState"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/machines/{id}/status": {
+      "patch": {
+        "operationId": "updateMachineStatus",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MachineState"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MachineStatusInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/issues": {
+      "get": {
+        "operationId": "listIssues",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Issue"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createIssue",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Issue"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/issues/{id}/resolve": {
+      "post": {
+        "operationId": "resolveIssue",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Issue"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveIssueInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/notifications": {
+      "get": {
+        "operationId": "listNotifications",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Notification"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notifications/{id}/read": {
+      "post": {
+        "operationId": "readNotification",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/notification-settings": {
+      "get": {
+        "operationId": "getNotificationSettings",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationSettings"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateNotificationSettings",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationSettings"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationSettingsInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/email-deliveries": {
+      "get": {
+        "operationId": "listEmailDeliveries",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EmailDelivery"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/email-deliveries/{id}/retry": {
+      "post": {
+        "operationId": "retryEmailDelivery",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Message"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/profile": {
+      "patch": {
+        "operationId": "updateProfile",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileInput"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -615,6 +991,10 @@
             "minItems": 1,
             "maxItems": 3,
             "uniqueItems": true
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254
           }
         }
       },
@@ -649,6 +1029,19 @@
             "minItems": 1,
             "maxItems": 3,
             "uniqueItems": true
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "username": {
+            "type": "string",
+            "pattern": "^[a-z0-9_.@-]{3,100}$"
           }
         }
       },
@@ -700,6 +1093,10 @@
             "minItems": 1,
             "maxItems": 3,
             "uniqueItems": true
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254
           }
         }
       },
@@ -796,6 +1193,9 @@
           },
           "requiresRoleSelection": {
             "type": "boolean"
+          },
+          "email": {
+            "type": "string"
           }
         }
       },
@@ -903,6 +1303,15 @@
           "rejects": {
             "type": "integer",
             "minimum": 0
+          },
+          "shippingStatus": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "ready",
+              "shipped",
+              "delivered"
+            ]
           }
         }
       },
@@ -1336,6 +1745,379 @@
             ]
           }
         }
+      },
+      "ShippingInput": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "ready",
+              "shipped",
+              "delivered"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "MachineState": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": [
+              "m1",
+              "m2",
+              "m3"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "unknown",
+              "running",
+              "stopped",
+              "maintenance"
+            ]
+          },
+          "note": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "updatedBy": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "note",
+          "updatedAt",
+          "updatedBy"
+        ]
+      },
+      "MachineStatusInput": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "stopped",
+              "maintenance"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "status",
+          "note"
+        ]
+      },
+      "IssueInput": {
+        "type": "object",
+        "properties": {
+          "machineId": {
+            "type": "string",
+            "enum": [
+              "m1",
+              "m2",
+              "m3"
+            ]
+          },
+          "jobId": {
+            "type": "string"
+          },
+          "logId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "low",
+              "normal",
+              "high",
+              "critical"
+            ]
+          }
+        },
+        "required": [
+          "machineId",
+          "title",
+          "description",
+          "severity"
+        ]
+      },
+      "Issue": {
+        "type": "object",
+        "properties": {
+          "machineId": {
+            "type": "string",
+            "enum": [
+              "m1",
+              "m2",
+              "m3"
+            ]
+          },
+          "jobId": {
+            "type": "string"
+          },
+          "logId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "low",
+              "normal",
+              "high",
+              "critical"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "resolved"
+            ]
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "createdByName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "resolvedBy": {
+            "type": "string"
+          },
+          "resolvedAt": {
+            "type": "string"
+          },
+          "resolutionNote": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "machineId",
+          "title",
+          "description",
+          "severity",
+          "status",
+          "createdBy",
+          "createdByName",
+          "createdAt"
+        ]
+      },
+      "ResolveIssueInput": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "note"
+        ]
+      },
+      "Notification": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "production_issue",
+              "machine_status"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "targetId": {
+            "type": "string"
+          },
+          "actorName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "read": {
+            "type": "boolean"
+          },
+          "emailStatus": {
+            "type": "string",
+            "enum": [
+              "disabled",
+              "pending",
+              "sent",
+              "failed",
+              "blocked",
+              "uncertain",
+              "partial"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "message",
+          "targetId",
+          "actorName",
+          "createdAt",
+          "read",
+          "emailStatus"
+        ]
+      },
+      "EmailDelivery": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "notificationId": {
+            "type": "string"
+          },
+          "recipientName": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "sending",
+              "sent",
+              "failed",
+              "blocked",
+              "uncertain",
+              "cancelled"
+            ]
+          },
+          "attempts": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "lastError": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "notificationId",
+          "recipientName",
+          "email",
+          "status",
+          "attempts",
+          "lastError",
+          "updatedAt"
+        ]
+      },
+      "NotificationSettings": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "totalRecipients": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "readyRecipients": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "enabled",
+          "totalRecipients",
+          "readyRecipients"
+        ]
+      },
+      "NotificationSettingsInput": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ]
+      },
+      "ProfileInput": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254
+          }
+        },
+        "required": [
+          "name",
+          "email"
+        ]
       }
     }
   }

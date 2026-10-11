@@ -19,4 +19,6 @@ export interface StaffMember {
      * @maxItems 3
      */
   roles: StaffMemberRolesItem[];
+  /** @maxLength 254 */
+  email?: string;
 }

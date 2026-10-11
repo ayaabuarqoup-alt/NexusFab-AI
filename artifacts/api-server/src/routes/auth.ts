@@ -2,14 +2,14 @@ import { Router } from "express";
 import { pool } from "@workspace/db";
 import { LoginBody, LoginResponse, GetSessionResponse, RegisterFactoryBody, SelectRoleBody } from "@workspace/api-zod";
 import { randomBytes, randomUUID } from "node:crypto";
-import { audit, decrypt, encrypt, hashPassword, type Vault } from "../lib/vault";
+import { audit, decrypt, encrypt, hashPassword, mutateVault, type Vault } from "../lib/vault";
 import { approvedRoles } from "../lib/roles";
 import { OperationError } from "./operations";
 import { clearSession, createSession, loginLimit, tokenHash, verifyPassword } from "../middlewares/factory-auth";
 
 const router = Router();
-function session(res: import("express").Response) {
-  return GetSessionResponse.parse({ authenticated: !!res.locals.factory, factory: res.locals.factory || "", factoryName: res.locals.factoryName || "", userId: res.locals.userId || "", userName: res.locals.userName || "", role: res.locals.role || "", availableRoles: res.locals.availableRoles || [], requiresRoleSelection: !!res.locals.factory && !res.locals.role });
+export function session(res: import("express").Response) {
+  return GetSessionResponse.parse({ authenticated: !!res.locals.factory, factory: res.locals.factory || "", factoryName: res.locals.factoryName || "", userId: res.locals.userId || "", userName: res.locals.userName || "", email: res.locals.email || "", role: res.locals.role || "", availableRoles: res.locals.availableRoles || [], requiresRoleSelection: !!res.locals.factory && !res.locals.role });
 }
 router.get("/auth/session", (_req, res) => {
   res.json(session(res));
@@ -49,7 +49,7 @@ router.post("/auth/login", loginLimit, async (req, res): Promise<void> => {
   if (!parsed.success || parsed.data.password.length > 256 || parsed.data.username.length > 100) {
     res.status(400).json({ error: "Invalid login input", code: "INVALID_INPUT" }); return;
   }
-  const { rows } = await pool.query("SELECT u.id AS user_id,u.name AS user_name,u.role,u.roles,u.active,u.password_hash,v.id,v.name FROM factory_users u JOIN factory_vaults v ON v.id=u.factory_id WHERE u.username=$1", [parsed.data.username.trim().toLowerCase()]);
+  const { rows } = await pool.query("SELECT u.id AS user_id,u.name AS user_name,u.email,u.role,u.roles,u.active,u.password_hash,v.id,v.name FROM factory_users u JOIN factory_vaults v ON v.id=u.factory_id WHERE u.username=$1", [parsed.data.username.trim().toLowerCase()]);
   if (!rows.length && process.env.NODE_ENV !== "production") {
     const demo = await pool.query("SELECT id,name,password_hash FROM factory_vaults WHERE id=$1 AND id IN ('factory_carton','factory_plastics')", [parsed.data.username]);
     if (demo.rows[0]) rows.push({...demo.rows[0],active:true,user_id:null,role:"owner",user_name:"Development demo"});
@@ -57,12 +57,15 @@ router.post("/auth/login", loginLimit, async (req, res): Promise<void> => {
   // Equal-cost password check even for nonexistent usernames.
   const stored = rows[0]?.password_hash || "nexusfab-invalid-user:" + "00".repeat(64);
   const valid = verifyPassword(parsed.data.password, stored);
-  if (!rows[0] || !valid || !rows[0].active || !rows[0].password_hash) { res.status(401).json({ error: "Invalid credentials", code: "INVALID_CREDENTIALS" }); return; }
+  if (!rows[0] || !valid || !rows[0].active || !rows[0].password_hash) {
+    if (rows[0]?.user_id) await mutateVault(rows[0].id, v => audit(v, { userId: rows[0].user_id, userName: rows[0].user_name }, "login_failed", rows[0].user_id, "Invalid credentials or inactive account"));
+    res.status(401).json({ error: "Invalid credentials", code: "INVALID_CREDENTIALS" }); return;
+  }
   if (req.cookies?.nexus_session) await pool.query("DELETE FROM factory_sessions WHERE id=$1", [tokenHash(String(req.cookies.nexus_session))]);
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    await client.query("SELECT id FROM factory_vaults WHERE id=$1 FOR UPDATE",[rows[0].id]);
+    const vaultRow = await client.query("SELECT payload FROM factory_vaults WHERE id=$1 FOR UPDATE",[rows[0].id]);
     if (rows[0].user_id) {
       const fresh = await client.query("SELECT active,password_hash,role,roles FROM factory_users WHERE id=$1",[rows[0].user_id]);
       if (!fresh.rows[0]?.active || fresh.rows[0].password_hash !== stored) {
@@ -73,9 +76,13 @@ router.post("/auth/login", loginLimit, async (req, res): Promise<void> => {
       rows[0].roles = fresh.rows[0].roles;
     }
     await createSession(res, rows[0].id, rows[0].user_id, client);
+    const vault = decrypt(rows[0].id, vaultRow.rows[0].payload);
+    audit(vault, { userId: rows[0].user_id || "demo", userName: rows[0].user_name }, "login_succeeded", rows[0].user_id || "demo");
+    await client.query("UPDATE factory_vaults SET payload=$1 WHERE id=$2", [encrypt(rows[0].id, vault), rows[0].id]);
+    await client.query("SELECT pg_notify('nexus_updates',$1)", [JSON.stringify({ factoryId: rows[0].id })]);
     await client.query("COMMIT");
   } catch(e) {await client.query("ROLLBACK"); throw e;} finally {client.release();}
-  res.json(LoginResponse.parse({ authenticated: true, factory: rows[0].id, factoryName: rows[0].name, userId: rows[0].user_id || "demo", userName: rows[0].user_name, role: "", availableRoles: approvedRoles(rows[0]), requiresRoleSelection: true }));
+  res.json(LoginResponse.parse({ authenticated: true, factory: rows[0].id, factoryName: rows[0].name, userId: rows[0].user_id || "demo", userName: rows[0].user_name, email: rows[0].email || "", role: "", availableRoles: approvedRoles(rows[0]), requiresRoleSelection: true }));
 });
 router.post("/auth/role", async (req, res) => {
   if (!res.locals.factory || !res.locals.sessionId) throw new OperationError("UNAUTHORIZED", 401);
@@ -97,6 +104,7 @@ router.post("/auth/role", async (req, res) => {
     const vault = decrypt(res.locals.factory, vaultRow.rows[0].payload);
     audit(vault, { userId: res.locals.userId, userName: res.locals.userName }, "role_selected", res.locals.userId, input.data.role);
     await client.query("UPDATE factory_vaults SET payload=$1 WHERE id=$2", [encrypt(res.locals.factory, vault), res.locals.factory]);
+    await client.query("SELECT pg_notify('nexus_updates',$1)", [JSON.stringify({ factoryId: res.locals.factory })]);
     await client.query("COMMIT");
     res.locals.role = input.data.role;
     res.locals.availableRoles = grants;
@@ -105,7 +113,12 @@ router.post("/auth/role", async (req, res) => {
   finally { client.release(); }
 });
 router.post("/auth/logout", async (req, res): Promise<void> => {
-  if (req.cookies?.nexus_session) await pool.query("DELETE FROM factory_sessions WHERE id=$1", [tokenHash(String(req.cookies.nexus_session))]);
+  if (res.locals.factory) {
+    await mutateVault(res.locals.factory, async (v, client) => {
+      audit(v, { userId: res.locals.userId, userName: res.locals.userName }, "logout", res.locals.userId);
+      await client.query("DELETE FROM factory_sessions WHERE id=$1", [res.locals.sessionId]);
+    });
+  } else if (req.cookies?.nexus_session) await pool.query("DELETE FROM factory_sessions WHERE id=$1", [tokenHash(String(req.cookies.nexus_session))]);
   clearSession(res); res.json({ message: "Signed out" });
 });
 export default router;

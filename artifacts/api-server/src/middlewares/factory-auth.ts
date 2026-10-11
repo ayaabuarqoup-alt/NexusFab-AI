@@ -18,7 +18,7 @@ export const readSession: RequestHandler = async (req, res, next) => {
   const token = req.cookies?.[cookie];
   if (typeof token === "string" && /^[a-f0-9]{64}$/.test(token)) {
     const { rows } = await pool.query(
-      `SELECT v.id,v.name,u.id AS user_id,u.name AS user_name,u.role,u.roles,s.active_role
+      `SELECT v.id,v.name,u.id AS user_id,u.name AS user_name,u.email,u.role,u.roles,s.active_role
        FROM factory_sessions s JOIN factory_vaults v ON v.id=s.factory_id
        LEFT JOIN factory_users u ON u.id=s.user_id AND u.factory_id=s.factory_id
        WHERE s.id=$1 AND s.expires_at > NOW() AND
@@ -28,6 +28,7 @@ export const readSession: RequestHandler = async (req, res, next) => {
       res.locals.factory = rows[0].id; res.locals.factoryName = rows[0].name;
       res.locals.userId = rows[0].user_id || "demo";
       res.locals.userName = rows[0].user_name || "Development demo";
+      res.locals.email = rows[0].email || "";
       res.locals.availableRoles = rows[0].user_id ? approvedRoles(rows[0]) : ["owner"];
       res.locals.role = res.locals.availableRoles.includes(rows[0].active_role) ? rows[0].active_role : "";
       res.locals.sessionId = tokenHash(token);

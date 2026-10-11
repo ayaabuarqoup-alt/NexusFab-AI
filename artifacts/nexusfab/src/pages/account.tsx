@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, History, KeyRound, Pencil, RotateCcw, ShieldAlert, UserPlus, X } from "lucide-react";
+import { AlertTriangle, Check, Copy, KeyRound, Pencil, RotateCcw, ShieldAlert, UserCircle, UserPlus, X } from "lucide-react";
+import { Link } from "wouter";
 import {
   useChangePassword, useListStaff, getListStaffQueryKey, useInviteStaff, useUpdateStaff, useResetStaffPassword,
-  useListAudit, getListAuditQueryKey, getGetSessionQueryKey, type Invitation, type StaffMember, type StaffInputRole, type StaffMemberRolesItem,
+  useUpdateProfile, getListAuditQueryKey, getGetSessionQueryKey, getGetNotificationSettingsQueryKey, type Invitation, type StaffMember, type StaffInputRole, type StaffMemberRolesItem,
 } from "@workspace/api-client-react";
 import { useI18n, errorMessage, type TKey } from "@/lib/i18n";
 import { Empty, ErrorState, Field, PageHeader, Panel, Pill, Sk, inputCls, useAuthed, useRole, broadcastAuth, PermNote } from "@/components/common";
@@ -39,6 +40,46 @@ function RolePicker({ value, onChange, testId }: { value: R[]; onChange: (v: R[]
 function GrantList({ roles }: { roles: R[] }) {
   const { t } = useI18n();
   return <div className="flex flex-wrap gap-1">{roles.map((r) => <span key={r} className="rounded-sm border bg-secondary/60 px-1.5 py-0.5 text-[11px] font-medium">{t(`role_${r}` as TKey)}</span>)}</div>;
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function EmailWarn({ testId }: { testId: string }) {
+  const { t } = useI18n();
+  return <span className="inline-flex items-center gap-1 text-[11px] text-[hsl(var(--warn))]" data-testid={testId}><AlertTriangle className="h-3 w-3 shrink-0" />{t("emailMissing")}</span>;
+}
+
+function ProfilePanel() {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { session, demo } = useRole();
+  const [f, setF] = useState({ name: session?.userName ?? "", email: session?.email ?? "" });
+  const [err, setErr] = useState("");
+  const upd = useUpdateProfile({ mutation: { onSuccess: (s) => {
+    qc.setQueryData(getGetSessionQueryKey(), s); qc.invalidateQueries({ queryKey: getListStaffQueryKey() }); qc.invalidateQueries({ queryKey: getGetNotificationSettingsQueryKey() });
+    setF({ name: s.userName ?? f.name, email: s.email ?? "" }); toast({ title: t("profileSaved") });
+  } } });
+  const submit = (e: FormEvent) => {
+    e.preventDefault(); setErr("");
+    const name = f.name.trim(), email = f.email.trim();
+    if (!name) return setErr(t("required"));
+    if (email && !EMAIL_RE.test(email)) return setErr(t("emailRule"));
+    upd.mutate({ data: { name: name.slice(0, 100), email: email.slice(0, 254) } });
+  };
+  return (
+    <Panel title={t("profileTitle")} right={<UserCircle className="h-3.5 w-3.5 text-muted-foreground" />}>
+      <p className="mb-4 text-xs text-muted-foreground">{t("profileSub")}</p>
+      <form onSubmit={submit} className="grid gap-3">
+        <fieldset disabled={demo || upd.isPending} className="grid gap-3">
+          <Field label={t("fullName")}><input className={inputCls} maxLength={100} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} data-testid="input-profile-name" /></Field>
+          <Field label={t("email")}><input type="email" dir="ltr" className={`${inputCls} num`} maxLength={254} placeholder={t("emailPh")} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} data-testid="input-profile-email" /></Field>
+          {!f.email.trim() && <EmailWarn testId="text-profile-email-warning" />}
+        </fieldset>
+        {(err || upd.isError) && <p className="text-xs text-destructive" data-testid="text-profile-error">{err || errorMessage(upd.error, t)}</p>}
+        <button disabled={demo || upd.isPending} className={btn} data-testid="button-save-profile">{upd.isPending ? t("saving") : t("saveProfile")}</button>
+      </form>
+    </Panel>
+  );
 }
 
 const btn = "inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:brightness-110 disabled:opacity-60";
@@ -114,11 +155,11 @@ function TokenReveal({ inv, who, onClose }: { inv: Invitation; who: string; onCl
 function InviteForm({ onIssued }: { onIssued: (inv: Invitation, who: string) => void }) {
   const { t } = useI18n();
   const qc = useQueryClient();
-  const [f, setF] = useState<{ username: string; name: string; roles: R[] }>({ username: "", name: "", roles: ["operator"] });
+  const [f, setF] = useState<{ username: string; name: string; email: string; roles: R[] }>({ username: "", name: "", email: "", roles: ["operator"] });
   const [err, setErr] = useState("");
   const invite = useInviteStaff({ mutation: { onSuccess: (inv, v) => {
     qc.invalidateQueries({ queryKey: getListStaffQueryKey() }); qc.invalidateQueries({ queryKey: getListAuditQueryKey() });
-    onIssued(inv, v.data.username); setF({ username: "", name: "", roles: ["operator"] });
+    onIssued(inv, v.data.username); setF({ username: "", name: "", email: "", roles: ["operator"] });
   } } });
   const submit = (e: FormEvent) => {
     e.preventDefault(); setErr("");
@@ -126,20 +167,23 @@ function InviteForm({ onIssued }: { onIssued: (inv: Invitation, who: string) => 
     if (!username || !f.name.trim()) return setErr(t("required"));
     if (!/^[a-z0-9_.@-]{3,100}$/.test(username)) return setErr(t("usernameRule"));
     if (f.roles.length === 0) return setErr(t("rolesRule"));
+    const email = f.email.trim();
+    if (email && !EMAIL_RE.test(email)) return setErr(t("emailRule"));
     const roles = ordered(f.roles);
-    invite.mutate({ data: { username, name: f.name.trim().slice(0, 100), role: roles[0] as StaffInputRole, roles } });
+    invite.mutate({ data: { username, name: f.name.trim().slice(0, 100), role: roles[0] as StaffInputRole, roles, email } });
   };
   return (
-    <form onSubmit={submit} className="grid gap-3 border-b bg-secondary/30 p-4 md:grid-cols-[1fr_1fr_auto_auto] md:items-end">
+    <form onSubmit={submit} className="grid gap-3 border-b bg-secondary/30 p-4 md:grid-cols-[1fr_1fr_1.2fr] md:items-end xl:grid-cols-[1fr_1fr_1.2fr_auto_auto]">
       <Field label={t("staffUsername")}><input dir="ltr" className={`${inputCls} num`} value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} placeholder="a.haddad" data-testid="input-invite-username" /></Field>
       <Field label={t("fullName")}><input className={inputCls} maxLength={100} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} data-testid="input-invite-name" /></Field>
+      <Field label={t("email")}><input type="email" dir="ltr" className={`${inputCls} num`} maxLength={254} placeholder={t("emailPh")} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} data-testid="input-invite-email" /></Field>
       <div className="flex flex-col gap-1.5">
         <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{t("rolesGranted")}</span>
         <RolePicker value={f.roles} onChange={(roles) => setF({ ...f, roles })} testId="picker-invite-roles" />
       </div>
       <button disabled={invite.isPending} className={btn} data-testid="button-invite"><UserPlus className="h-4 w-4" />{invite.isPending ? t("inviting") : t("invite")}</button>
-      <span className="text-[11px] text-muted-foreground md:col-span-4">{t("usernameRule")}</span>
-      {(err || invite.isError) && <p className="text-xs text-destructive md:col-span-4" data-testid="text-invite-error">{err || errorMessage(invite.error, t)}</p>}
+      <span className="text-[11px] text-muted-foreground md:col-span-3 xl:col-span-5">{t("usernameRule")}{!f.email.trim() && <> · <span className="text-[hsl(var(--warn))]">{t("emailMissing")}</span></>}</span>
+      {(err || invite.isError) && <p className="text-xs text-destructive md:col-span-3 xl:col-span-5" data-testid="text-invite-error">{err || errorMessage(invite.error, t)}</p>}
     </form>
   );
 }
@@ -152,6 +196,7 @@ function StaffRow({ m, self, onIssued }: { m: StaffMember; self: boolean; onIssu
   const [roles, setRoles] = useState<R[]>(grantsOf(m));
   const [rowErr, setRowErr] = useState("");
   const [active, setActive] = useState(m.active);
+  const [prof, setProf] = useState({ name: m.name, username: m.username, email: m.email ?? "" });
   const [confirm, setConfirm] = useState(false);
   const refresh = () => { qc.invalidateQueries({ queryKey: getListStaffQueryKey() }); qc.invalidateQueries({ queryKey: getListAuditQueryKey() }); };
   const update = useUpdateStaff({ mutation: { onSuccess: () => { refresh(); setEditing(false); toast({ title: t("staffSaved") }); } } });
@@ -167,11 +212,17 @@ function StaffRow({ m, self, onIssued }: { m: StaffMember; self: boolean; onIssu
         <div className="min-w-0">
           <div className="flex items-center gap-2 truncate font-medium">{m.name}{self && <span className="rounded-sm bg-[hsl(32_95%_52%/0.15)] px-1.5 text-[10px] font-semibold uppercase text-[hsl(32_80%_38%)]">{t("you")}</span>}</div>
           <div dir="ltr" className="num truncate text-[11px] text-muted-foreground rtl:text-end">{m.username}</div>
+          {m.email ? <div dir="ltr" className="num truncate text-[11px] text-muted-foreground rtl:text-end" data-testid={`text-email-${m.id}`}>{m.email}</div> : <EmailWarn testId={`text-email-warning-${m.id}`} />}
         </div>
       </div>
       <div>
         {editing ? (
+          <div className="grid gap-2">
           <RolePicker value={roles} onChange={(v) => { setRoles(v); setRowErr(""); }} testId={`picker-roles-${m.id}`} />
+          <input className={`${inputCls} h-8`} maxLength={100} aria-label={t("fullName")} placeholder={t("fullName")} value={prof.name} onChange={(e) => setProf({ ...prof, name: e.target.value })} data-testid={`input-edit-name-${m.id}`} />
+          <input dir="ltr" className={`${inputCls} num h-8`} aria-label={t("usernameLbl")} placeholder={t("usernameLbl")} value={prof.username} onChange={(e) => setProf({ ...prof, username: e.target.value })} data-testid={`input-edit-username-${m.id}`} />
+          <input type="email" dir="ltr" className={`${inputCls} num h-8`} maxLength={254} aria-label={t("email")} placeholder={t("emailPh")} value={prof.email} onChange={(e) => setProf({ ...prof, email: e.target.value })} data-testid={`input-edit-email-${m.id}`} />
+          </div>
         ) : <GrantList roles={grantsOf(m)} />}
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
@@ -185,14 +236,22 @@ function StaffRow({ m, self, onIssued }: { m: StaffMember; self: boolean; onIssu
         )}
       </div>
       <div className="flex flex-col items-start gap-1 md:items-end">
-        {self ? <span className="max-w-[200px] text-[11px] text-muted-foreground md:text-end">{t("selfNote")}</span> : editing ? (
+        {self ? <span className="max-w-[200px] text-[11px] text-muted-foreground md:text-end">{t("selfNote")} {t("ownGrantsNote")}</span> : editing ? (
           <div className="flex gap-1.5">
-            <button onClick={() => { setEditing(false); setRoles(grantsOf(m)); setRowErr(""); setActive(m.active); update.reset(); }} className={ghost} data-testid={`button-cancel-${m.id}`}>{t("cancel")}</button>
-            <button onClick={() => { if (!roles.length) return setRowErr(t("rolesRule")); const rs = ordered(roles); update.mutate({ id: m.id, data: { role: rs[0], active, roles: rs } }); }} disabled={update.isPending} className={`${ghost} border-primary bg-primary text-primary-foreground hover:bg-primary hover:brightness-110`} data-testid={`button-save-${m.id}`}>{update.isPending ? t("saving") : t("save")}</button>
+            <button onClick={() => { setEditing(false); setRoles(grantsOf(m)); setRowErr(""); setActive(m.active); setProf({ name: m.name, username: m.username, email: m.email ?? "" }); update.reset(); }} className={ghost} data-testid={`button-cancel-${m.id}`}>{t("cancel")}</button>
+            <button onClick={() => {
+              if (!roles.length) return setRowErr(t("rolesRule"));
+              const name = prof.name.trim(), username = prof.username.trim().toLowerCase(), email = prof.email.trim();
+              if (!name) return setRowErr(t("required"));
+              if (!/^[a-z0-9_.@-]{3,100}$/.test(username)) return setRowErr(t("usernameRule"));
+              if (email && !EMAIL_RE.test(email)) return setRowErr(t("emailRule"));
+              const rs = ordered(roles);
+              update.mutate({ id: m.id, data: { role: rs[0], active, roles: rs, email, name: name.slice(0, 100), username } });
+            }} disabled={update.isPending} className={`${ghost} border-primary bg-primary text-primary-foreground hover:bg-primary hover:brightness-110`} data-testid={`button-save-${m.id}`}>{update.isPending ? t("saving") : t("save")}</button>
           </div>
         ) : (
           <div className="flex gap-1.5">
-            <button onClick={() => { setRoles(grantsOf(m)); setRowErr(""); setActive(m.active); setEditing(true); }} className={ghost} data-testid={`button-edit-${m.id}`}><Pencil className="h-3.5 w-3.5" />{t("edit")}</button>
+            <button onClick={() => { setRoles(grantsOf(m)); setRowErr(""); setActive(m.active); setProf({ name: m.name, username: m.username, email: m.email ?? "" }); setEditing(true); }} className={ghost} data-testid={`button-edit-${m.id}`}><Pencil className="h-3.5 w-3.5" />{t("edit")}</button>
             <button onClick={() => setConfirm(true)} disabled={reset.isPending} className={`${ghost} text-destructive hover:bg-destructive/5`} data-testid={`button-reset-${m.id}`}><RotateCcw className="h-3.5 w-3.5" />{t("resetInv")}</button>
           </div>
         )}
@@ -228,40 +287,7 @@ function StaffPanel({ selfId }: { selfId?: string }) {
       {staff.isError ? <div className="p-4"><ErrorState error={staff.error} onRetry={() => staff.refetch()} /></div>
         : !staff.data ? <div className="space-y-2 p-4">{[0, 1, 2].map((i) => <Sk key={i} className="h-12" />)}</div>
         : staff.data.length === 0 ? <div className="p-4"><Empty title={t("noStaff")} sub={t("noStaffSub")} /></div>
-        : staff.data.map((m) => <StaffRow key={`${m.id}-${grantsOf(m).join(",")}-${m.active}`} m={m} self={m.id === selfId} onIssued={onIssued} />)}
-    </Panel>
-  );
-}
-
-function AuditPanel() {
-  const { t } = useI18n();
-  const fmt = useFmt();
-  const authed = useAuthed();
-  const audit = useListAudit({ query: { queryKey: getListAuditQueryKey(), enabled: authed, refetchInterval: 30_000 } });
-  const label = (a: string) => { const k = `act_${a.replace(/[.\s-]/g, "_")}` as TKey; const v = t(k); return v === undefined || v === k ? a : v; };
-  return (
-    <Panel title={t("auditTitle")} right={<History className="h-3.5 w-3.5 text-muted-foreground" />} className="[&>div]:p-0">
-      <p className="px-4 pt-3 text-xs text-muted-foreground">{t("auditSub")}</p>
-      {audit.isError ? <div className="p-4"><ErrorState error={audit.error} onRetry={() => audit.refetch()} /></div>
-        : !audit.data ? <div className="space-y-2 p-4">{[0, 1, 2, 3].map((i) => <Sk key={i} className="h-10" />)}</div>
-        : audit.data.length === 0 ? <div className="p-4"><Empty title={t("noAudit")} sub={t("noAuditSub")} /></div>
-        : (
-          <ol className="relative mt-3">
-            {audit.data.map((e) => (
-              <li key={e.id} className="grid gap-1 border-t px-4 py-3 md:grid-cols-[170px_1fr_1fr] md:gap-4" data-testid={`row-audit-${e.id}`}>
-                <span className="num text-[11px] text-muted-foreground">{fmt(e.at)}</span>
-                <div className="min-w-0">
-                  <div className="text-sm font-medium">{label(e.action)}</div>
-                  {e.detail && <div className="truncate text-xs text-muted-foreground" title={e.detail}>{e.detail}</div>}
-                </div>
-                <div className="grid gap-0.5 text-xs">
-                  <span><span className="text-muted-foreground">{t("actor")}: </span>{e.actorName || "—"} <span dir="ltr" className="num text-[11px] text-muted-foreground">({e.actorId})</span></span>
-                  {e.targetId && <span><span className="text-muted-foreground">{t("target")}: </span><span dir="ltr" className="num">{e.targetId}</span></span>}
-                </div>
-              </li>
-            ))}
-          </ol>
-        )}
+        : staff.data.map((m) => <StaffRow key={`${m.id}-${grantsOf(m).join(",")}-${m.active}-${m.email ?? ""}-${m.name}-${m.username}`} m={m} self={m.id === selfId} onIssued={onIssued} />)}
     </Panel>
   );
 }
@@ -276,6 +302,7 @@ export default function Account() {
         <span><span className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("signedInAs")} </span><span className="font-medium">{session?.userName || session?.factoryName}</span></span>
         <span><span className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("activeRoleLbl")} </span><span className="font-medium" data-testid="text-active-role">{t(role ? (`role_${role}` as TKey) : "role_none")}</span></span>
         {!!session?.availableRoles?.length && <span className="flex items-center gap-2" data-testid="text-granted-roles"><span className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("rolesGranted")}</span><GrantList roles={ordered(session.availableRoles)} /></span>}
+        <span><span className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("email")} </span>{session?.email ? <span dir="ltr" className="num" data-testid="text-session-email">{session.email}</span> : <EmailWarn testId="text-session-email-warning" />}</span>
         <span><span className="text-[11px] uppercase tracking-wider text-muted-foreground">{t("userIdLbl")} </span><span dir="ltr" className="num">{session?.userId || "demo"}</span></span>
       </div>
       {demo && (
@@ -285,12 +312,12 @@ export default function Account() {
         </div>
       )}
       <div className="grid gap-4 lg:grid-cols-[340px_1fr]">
-        <PasswordPanel demo={demo} />
+        <div className="space-y-4"><ProfilePanel /><PasswordPanel demo={demo} /></div>
         {isOwner && !demo ? <StaffPanel selfId={session?.userId} /> : (
           <Panel title={t("staffTitle")}><PermNote>{demo ? t("err_DEMO_ACCOUNT") : t("ownerOnly")}</PermNote></Panel>
         )}
       </div>
-      <AuditPanel />
+      {isOwner && <Link href="/audit" className="rise inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline" data-testid="link-account-audit">{t("nav_audit")} →</Link>}
     </div>
   );
 }

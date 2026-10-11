@@ -1,8 +1,10 @@
 import { Info } from "lucide-react";
 import { useGetSummary, getGetSummaryQueryKey, type Machine } from "@workspace/api-client-react";
 import { useI18n } from "@/lib/i18n";
-import { ErrorState, PageHeader, Pill, Sk, useProtected } from "@/components/common";
+import { ErrorState, PageHeader, Panel, Pill, Sk, useProtected } from "@/components/common";
 import { cn } from "@/lib/utils";
+import { MachineStateCard, useMachineStates } from "@/components/machine-status";
+import { FlagIssueButton } from "@/components/issue-form";
 
 const tone = { stable: "ok", caution: "warn", high: "bad" } as const;
 const bar = { stable: "bg-[hsl(var(--ok))]", caution: "bg-[hsl(var(--warn))]", high: "bg-destructive" };
@@ -37,9 +39,17 @@ export function MachineCard({ m, compact }: { m: Machine; compact?: boolean }) {
 export default function Machines() {
   const { t } = useI18n();
   const q = useGetSummary({ query: { queryKey: getGetSummaryQueryKey(), ...useProtected() } });
+  const ms = useMachineStates();
   return (
     <div className="space-y-6">
-      <PageHeader title={t("machinesTitle")} sub={t("machinesSub")} />
+      <PageHeader title={t("machinesTitle")} sub={t("machinesSub")} action={<FlagIssueButton testId="button-flag-machine" />} />
+      <Panel title={t("liveTitle")}>
+        <p className="mb-3 text-xs text-muted-foreground">{t("liveExplain")}</p>
+        {ms.isError ? <ErrorState error={ms.error} onRetry={() => ms.refetch()} /> : !ms.data ? (
+          <div className="grid gap-4 md:grid-cols-3"><Sk className="h-48" /><Sk className="h-48" /><Sk className="h-48" /></div>
+        ) : <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{ms.data.map((m) => <MachineStateCard key={`${m.id}-${m.updatedAt}`} m={m} />)}</div>}
+      </Panel>
+      <h2 className="rise pt-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{t("heuristicTitle")}</h2>
       <div className="rise flex gap-3 rounded-md border border-primary/20 bg-primary/5 p-4 text-sm">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><p data-testid="text-fatigue-note">{t("fatigueNote")}</p>
       </div>

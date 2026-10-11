@@ -16,4 +16,5 @@ export interface Session {
   factoryName: string;
   availableRoles: SessionAvailableRolesItem[];
   requiresRoleSelection: boolean;
+  email?: string;
 }

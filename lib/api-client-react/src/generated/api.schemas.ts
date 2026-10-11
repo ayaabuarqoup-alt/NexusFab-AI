@@ -61,6 +61,8 @@ export interface StaffInput {
      * @maxItems 3
      */
   roles?: StaffInputRolesItem[];
+  /** @maxLength 254 */
+  email?: string;
 }
 
 export type StaffUpdateRole = typeof StaffUpdateRole[keyof typeof StaffUpdateRole];
@@ -89,6 +91,15 @@ export interface StaffUpdate {
      * @maxItems 3
      */
   roles?: StaffUpdateRolesItem[];
+  /** @maxLength 254 */
+  email?: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name?: string;
+  /** @pattern ^[a-z0-9_.@-]{3,100}$ */
+  username?: string;
 }
 
 export type StaffMemberRole = typeof StaffMemberRole[keyof typeof StaffMemberRole];
@@ -121,6 +132,8 @@ export interface StaffMember {
      * @maxItems 3
      */
   roles: StaffMemberRolesItem[];
+  /** @maxLength 254 */
+  email?: string;
 }
 
 export interface AuditEvent {
@@ -165,6 +178,7 @@ export interface Session {
   factoryName: string;
   availableRoles: SessionAvailableRolesItem[];
   requiresRoleSelection: boolean;
+  email?: string;
 }
 
 export interface LoginInput {
@@ -196,6 +210,16 @@ export const JobStatus = {
   dispatched: 'dispatched',
 } as const;
 
+export type JobShippingStatus = typeof JobShippingStatus[keyof typeof JobShippingStatus];
+
+
+export const JobShippingStatus = {
+  pending: 'pending',
+  ready: 'ready',
+  shipped: 'shipped',
+  delivered: 'delivered',
+} as const;
+
 export interface Job {
   id: string;
   /**
@@ -214,6 +238,7 @@ export interface Job {
   goodQty: number;
   /** @minimum 0 */
   rejects: number;
+  shippingStatus?: JobShippingStatus;
 }
 
 export interface LogInput {
@@ -433,5 +458,240 @@ export const SelectRoleInputRole = {
 
 export interface SelectRoleInput {
   role: SelectRoleInputRole;
+}
+
+export type ShippingInputStatus = typeof ShippingInputStatus[keyof typeof ShippingInputStatus];
+
+
+export const ShippingInputStatus = {
+  pending: 'pending',
+  ready: 'ready',
+  shipped: 'shipped',
+  delivered: 'delivered',
+} as const;
+
+export interface ShippingInput {
+  status: ShippingInputStatus;
+  /** @maxLength 1000 */
+  note?: string;
+}
+
+export type MachineStateId = typeof MachineStateId[keyof typeof MachineStateId];
+
+
+export const MachineStateId = {
+  m1: 'm1',
+  m2: 'm2',
+  m3: 'm3',
+} as const;
+
+export type MachineStateStatus = typeof MachineStateStatus[keyof typeof MachineStateStatus];
+
+
+export const MachineStateStatus = {
+  unknown: 'unknown',
+  running: 'running',
+  stopped: 'stopped',
+  maintenance: 'maintenance',
+} as const;
+
+export interface MachineState {
+  id: MachineStateId;
+  name: string;
+  status: MachineStateStatus;
+  note: string;
+  updatedAt: string;
+  updatedBy: string;
+}
+
+export type MachineStatusInputStatus = typeof MachineStatusInputStatus[keyof typeof MachineStatusInputStatus];
+
+
+export const MachineStatusInputStatus = {
+  running: 'running',
+  stopped: 'stopped',
+  maintenance: 'maintenance',
+} as const;
+
+export interface MachineStatusInput {
+  status: MachineStatusInputStatus;
+  /** @maxLength 1000 */
+  note: string;
+}
+
+export type IssueInputMachineId = typeof IssueInputMachineId[keyof typeof IssueInputMachineId];
+
+
+export const IssueInputMachineId = {
+  m1: 'm1',
+  m2: 'm2',
+  m3: 'm3',
+} as const;
+
+export type IssueInputSeverity = typeof IssueInputSeverity[keyof typeof IssueInputSeverity];
+
+
+export const IssueInputSeverity = {
+  low: 'low',
+  normal: 'normal',
+  high: 'high',
+  critical: 'critical',
+} as const;
+
+export interface IssueInput {
+  machineId: IssueInputMachineId;
+  jobId?: string;
+  logId?: string;
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  description: string;
+  severity: IssueInputSeverity;
+}
+
+export type IssueMachineId = typeof IssueMachineId[keyof typeof IssueMachineId];
+
+
+export const IssueMachineId = {
+  m1: 'm1',
+  m2: 'm2',
+  m3: 'm3',
+} as const;
+
+export type IssueSeverity = typeof IssueSeverity[keyof typeof IssueSeverity];
+
+
+export const IssueSeverity = {
+  low: 'low',
+  normal: 'normal',
+  high: 'high',
+  critical: 'critical',
+} as const;
+
+export type IssueStatus = typeof IssueStatus[keyof typeof IssueStatus];
+
+
+export const IssueStatus = {
+  open: 'open',
+  resolved: 'resolved',
+} as const;
+
+export interface Issue {
+  machineId: IssueMachineId;
+  jobId?: string;
+  logId?: string;
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 2000
+     */
+  description: string;
+  severity: IssueSeverity;
+  id: string;
+  status: IssueStatus;
+  createdBy: string;
+  createdByName: string;
+  createdAt: string;
+  resolvedBy?: string;
+  resolvedAt?: string;
+  resolutionNote?: string;
+}
+
+export interface ResolveIssueInput {
+  /**
+     * @minLength 1
+     * @maxLength 1000
+     */
+  note: string;
+}
+
+export type NotificationKind = typeof NotificationKind[keyof typeof NotificationKind];
+
+
+export const NotificationKind = {
+  production_issue: 'production_issue',
+  machine_status: 'machine_status',
+} as const;
+
+export type NotificationEmailStatus = typeof NotificationEmailStatus[keyof typeof NotificationEmailStatus];
+
+
+export const NotificationEmailStatus = {
+  disabled: 'disabled',
+  pending: 'pending',
+  sent: 'sent',
+  failed: 'failed',
+  blocked: 'blocked',
+  uncertain: 'uncertain',
+  partial: 'partial',
+} as const;
+
+export interface Notification {
+  id: string;
+  kind: NotificationKind;
+  title: string;
+  message: string;
+  targetId: string;
+  actorName: string;
+  createdAt: string;
+  read: boolean;
+  emailStatus: NotificationEmailStatus;
+}
+
+export type EmailDeliveryStatus = typeof EmailDeliveryStatus[keyof typeof EmailDeliveryStatus];
+
+
+export const EmailDeliveryStatus = {
+  pending: 'pending',
+  sending: 'sending',
+  sent: 'sent',
+  failed: 'failed',
+  blocked: 'blocked',
+  uncertain: 'uncertain',
+  cancelled: 'cancelled',
+} as const;
+
+export interface EmailDelivery {
+  id: string;
+  notificationId: string;
+  recipientName: string;
+  email: string;
+  status: EmailDeliveryStatus;
+  /** @minimum 0 */
+  attempts: number;
+  lastError: string;
+  updatedAt: string;
+}
+
+export interface NotificationSettings {
+  enabled: boolean;
+  /** @minimum 0 */
+  totalRecipients: number;
+  /** @minimum 0 */
+  readyRecipients: number;
+}
+
+export interface NotificationSettingsInput {
+  enabled: boolean;
+}
+
+export interface ProfileInput {
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name: string;
+  /** @maxLength 254 */
+  email: string;
 }
 

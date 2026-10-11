@@ -8,10 +8,14 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { I18nProvider, useI18n } from '@/lib/i18n';
 import { Shell } from '@/components/shell';
-import { ErrorState, Sk, sessionQuery, onAuthBroadcast, isRoleActive } from '@/components/common';
+import { ErrorState, Sk, sessionQuery, onAuthBroadcast, isRoleActive, useRole, PermNote } from '@/components/common';
 import Login from '@/pages/login';
 import SelectRole from '@/pages/select-role';
-import Dashboard from '@/pages/dashboard';
+import Home from '@/pages/home';
+import Reports from '@/pages/reports';
+import Audit from '@/pages/audit';
+import Issues from '@/pages/issues';
+import Notifications from '@/pages/notifications';
 import Jobs from '@/pages/jobs';
 import Production from '@/pages/production';
 import Quality from '@/pages/quality';
@@ -54,7 +58,11 @@ function Gate() {
     <Shell key={tenant}>
       <RoutedErrorBoundary>
         <Switch>
-          <Route path="/" component={Dashboard} />
+          <Route path="/" component={Home} />
+          <Route path="/reports">{() => <RoleGate allow={['owner']}><Reports /></RoleGate>}</Route>
+          <Route path="/audit">{() => <RoleGate allow={['owner']}><Audit /></RoleGate>}</Route>
+          <Route path="/notifications">{() => <RoleGate allow={['owner', 'quality_inspector']}><Notifications /></RoleGate>}</Route>
+          <Route path="/issues" component={Issues} />
           <Route path="/jobs" component={Jobs} />
           <Route path="/production" component={Production} />
           <Route path="/quality" component={Quality} />
@@ -66,6 +74,18 @@ function Gate() {
       </RoutedErrorBoundary>
     </Shell>
   );
+}
+
+function RoleGate({ allow, children }: { allow: string[]; children: ReactNode }) {
+  const { role } = useRole();
+  const { t } = useI18n();
+  if (!allow.includes(role)) return (
+    <div className="mx-auto flex max-w-md flex-col gap-4 py-20" data-testid="panel-forbidden">
+      <PermNote>{allow.length === 1 ? t('adminOnlyPage') : t('err_FORBIDDEN')}</PermNote>
+      <Link href="/" className="self-start rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground" data-testid="link-forbidden-home">{t('backHome')}</Link>
+    </div>
+  );
+  return <>{children}</>;
 }
 
 function RoutedErrorBoundary({ children }: { children: ReactNode }) {

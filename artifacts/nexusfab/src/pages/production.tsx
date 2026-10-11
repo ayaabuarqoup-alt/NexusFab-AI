@@ -5,6 +5,7 @@ import { useListJobs, getListJobsQueryKey, useListLogs, getListLogsQueryKey, use
 import { useI18n, errorMessage } from "@/lib/i18n";
 import { Empty, ErrorState, Field, PageHeader, Panel, Pill, Sk, inputCls, useProtected, useRole, PermNote } from "@/components/common";
 import { useToast } from "@/hooks/use-toast";
+import { FlagIssueButton } from "@/components/issue-form";
 
 export const qcTone = { pending: "warn", approved: "ok", rejected: "bad" } as const;
 const now = () => { const d = new Date(); return { date: d.toISOString().slice(0, 10), time: d.toTimeString().slice(0, 5) }; };
@@ -37,7 +38,7 @@ export default function Production() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("prodTitle")} sub={t("prodSub")} />
+      <PageHeader title={t("prodTitle")} sub={t("prodSub")} action={<FlagIssueButton testId="button-flag-production">{t("reportProblem")}</FlagIssueButton>} />
       <div className="grid gap-4 lg:grid-cols-[340px_1fr]">
         <Panel title={t("newLog")}>
           {!canCreate ? <PermNote>{t("permLogs")}</PermNote> : jobs.data && open.length === 0 ? <Empty title={t("noJobs")} sub={t("needJob")} /> : (
@@ -72,9 +73,9 @@ export default function Production() {
             : logs.data.length === 0 ? <div className="p-4"><Empty title={t("noLogs")} sub={t("noLogsSub")} /></div>
             : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[720px] text-sm">
+                <table className="w-full min-w-[820px] text-sm">
                   <thead className="bg-secondary/50 text-[11px] uppercase tracking-wider text-muted-foreground">
-                    <tr>{[t("date"), t("job"), t("staff"), t("goodQty"), t("rejects"), t("downtimeMin"), t("reason"), t("status")].map((h) => <th key={h} className="px-3 py-2 text-start font-semibold">{h}</th>)}</tr>
+                    <tr>{[t("date"), t("job"), t("staff"), t("goodQty"), t("rejects"), t("downtimeMin"), t("reason"), t("status"), ""].map((h) => <th key={h} className="px-3 py-2 text-start font-semibold">{h}</th>)}</tr>
                   </thead>
                   <tbody>
                     {logs.data.map((l) => (
@@ -87,6 +88,7 @@ export default function Production() {
                         <td className="num px-3 py-2">{nf(l.downtimeMinutes)}</td>
                         <td className="max-w-[180px] truncate px-3 py-2 text-xs text-muted-foreground" title={l.reason}>{l.reason || "—"}</td>
                         <td className="px-3 py-2"><Pill tone={qcTone[l.qcStatus]}>{t(`qc_${l.qcStatus}`)}</Pill></td>
+                        <td className="px-3 py-2"><FlagIssueButton seed={{ logId: l.id, jobId: l.jobId, machineId: l.machineId }} testId={`button-flag-log-${l.id}`} /></td>
                       </tr>
                     ))}
                   </tbody>

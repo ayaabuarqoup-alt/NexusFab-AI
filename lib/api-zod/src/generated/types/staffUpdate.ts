@@ -15,4 +15,13 @@ export interface StaffUpdate {
      * @maxItems 3
      */
   roles?: StaffUpdateRolesItem[];
+  /** @maxLength 254 */
+  email?: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
+  name?: string;
+  /** @pattern ^[a-z0-9_.@-]{3,100}$ */
+  username?: string;
 }

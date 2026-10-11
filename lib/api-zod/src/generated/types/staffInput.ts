@@ -21,4 +21,6 @@ export interface StaffInput {
      * @maxItems 3
      */
   roles?: StaffInputRolesItem[];
+  /** @maxLength 254 */
+  email?: string;
 }

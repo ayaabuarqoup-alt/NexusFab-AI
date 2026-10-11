@@ -13,13 +13,23 @@ import { migrateAccounts } from "../src/lib/accounts";
 const tenants = [0, 1].map(() => `regression_${randomUUID()}`);
 const password = randomUUID();
 const cookies: string[] = [];
+// Express trusts one proxy hop. Unique synthetic addresses keep these tests
+// independent of preview traffic and other regression runs.
+const clientAddresses = new Set<string>();
+function newClientAddress() {
+  const hex = randomUUID().replaceAll("-", "");
+  const address = `fd00:${hex.match(/.{4}/g)!.slice(0, 7).join(":")}`;
+  clientAddresses.add(address);
+  return address;
+}
+const defaultClientAddress = newClientAddress();
 let server: ReturnType<typeof app.listen>;
 let base: string;
 const jobInput = { name: "Regression run", machineId: "m1", target: 10, startDate: "2026-10-11", dueDate: "2026-10-12", startTime: "08:00" };
 const logInput = (jobId: string, goodQty = 10) => ({ jobId, staff: "Test operator", date: "2026-10-11", time: "09:00", goodQty, rejects: 0, downtimeMinutes: 0, reason: "" });
-async function request(path: string, method = "GET", body?: unknown, cookie = cookies[0]) {
+async function request(path: string, method = "GET", body?: unknown, cookie = cookies[0], headers: Record<string, string> = {}) {
   const response = await fetch(`${base}${path}`, {
-    method, headers: { "content-type": "application/json", ...(cookie ? { cookie } : {}) },
+    method, headers: { "content-type": "application/json", "x-forwarded-for": defaultClientAddress, ...(cookie ? { cookie } : {}), ...headers },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   return { status: response.status, body: await response.json(), response };
@@ -51,10 +61,133 @@ before(async () => {
 after(async () => {
   if (server) await new Promise<void>((resolve, reject) => server.close(e => e ? reject(e) : resolve()));
   try {
+    await pool.query("DELETE FROM factory_login_attempts WHERE id = ANY($1::text[])",
+      [[...clientAddresses].map(tokenHash)]);
     await pool.query("DELETE FROM factory_sessions WHERE factory_id = ANY($1::text[])", [tenants]);
     await pool.query("DELETE FROM factory_users WHERE factory_id = ANY($1::text[])", [tenants]);
     await pool.query("DELETE FROM factory_vaults WHERE id = ANY($1::text[])", [tenants]);
   } finally { await pool.end(); }
+});
+
+test("mutation origin checks reject forged requests without changing factory data", async () => {
+  const origin = new URL(base).origin;
+  const before = await loadVault(tenants[0]!);
+  for (const headers of [
+    { origin: "https://attacker.invalid" },
+    { origin: "not a URL" },
+    { origin: "null" },
+    { origin: "https://" },
+    { origin: `${origin}.attacker.invalid` },
+    { "sec-fetch-site": "cross-site" },
+    { origin, "sec-fetch-site": "cross-site" },
+    // Only the first forwarded host is accepted, not any host in the list.
+    { origin: "https://attacker.invalid", "x-forwarded-host": "factory.example, attacker.invalid" },
+  ] as Record<string, string>[]) {
+    for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
+      const r = await request("/jobs", method, jobInput, cookies[0], headers);
+      assert.equal(r.status, 403, `${method} ${JSON.stringify(headers)}`);
+      assert.equal(r.body.code, "FORBIDDEN");
+      assert.equal(r.response.headers.get("set-cookie"), null);
+    }
+  }
+  assert.deepEqual(await loadVault(tenants[0]!), before);
+
+  // Forged login requests must be rejected before they consume a login attempt.
+  const ip = newClientAddress();
+  const denied = await request("/auth/login", "POST", { username: tenants[0], password }, "",
+    { origin: "https://attacker.invalid", "x-forwarded-for": ip });
+  assert.equal(denied.status, 403);
+  assert.equal((await pool.query("SELECT id FROM factory_login_attempts WHERE id=$1", [tokenHash(ip)])).rowCount, 0);
+});
+
+test("same-origin, proxy-host and headerless mutations pass; safe methods bypass origin enforcement", async () => {
+  for (const headers of [
+    {},
+    { origin: new URL(base).origin, "sec-fetch-site": "same-origin" },
+    { origin: "https://factory.example", "x-forwarded-host": " factory.example , proxy.internal" },
+  ] as Record<string, string>[]) {
+    // Logout with no cookie is a harmless real mutation endpoint.
+    assert.equal((await request("/auth/logout", "POST", undefined, "", headers)).status, 200);
+  }
+  for (const method of ["GET", "HEAD", "OPTIONS"]) {
+    const r = await fetch(`${base}/auth/session`, {
+      method, headers: { origin: "malformed origin", "sec-fetch-site": "cross-site" },
+    });
+    assert.equal(r.status, 200, method);
+    await r.arrayBuffer();
+  }
+});
+
+test("login attempts allow 15, block 16 and later, isolate clients, and reset after expiry", async () => {
+  const ip = newClientAddress();
+  const headers = { "x-forwarded-for": ip };
+  const invalid = { username: tenants[0], password: `${password}-wrong` };
+  const valid = { username: tenants[0], password };
+  const started = Date.now();
+  // Both input-validation failures and bad credentials consume the same limit.
+  for (let attempt = 1; attempt <= 15; attempt++) {
+    const r = await request("/auth/login", "POST", attempt === 1 ? {} : invalid, "", headers);
+    assert.equal(r.status, attempt === 1 ? 400 : 401, `attempt ${attempt}`);
+    assert.equal(r.response.headers.get("retry-after"), null);
+    assert.equal(r.response.headers.get("set-cookie"), null);
+  }
+  const { rows: [bucket] } = await pool.query("SELECT * FROM factory_login_attempts WHERE id=$1", [tokenHash(ip)]);
+  assert.equal(bucket.count, 15);
+  const expires = new Date(bucket.expires_at).getTime();
+  assert(expires >= started + 900_000 && expires <= Date.now() + 900_000);
+  for (const body of [valid, invalid]) {
+    const r = await request("/auth/login", "POST", body, "", headers);
+    assert.equal(r.status, 429);
+    assert.equal(r.body.code, "RATE_LIMITED");
+    assert.equal(r.response.headers.get("retry-after"), "900");
+    assert.equal(r.response.headers.get("set-cookie"), null);
+  }
+  const { rows: [blocked] } = await pool.query("SELECT count,expires_at FROM factory_login_attempts WHERE id=$1", [tokenHash(ip)]);
+  assert.equal(blocked.count, 17);
+  assert.equal(new Date(blocked.expires_at).getTime(), expires, "blocked attempts do not extend the window");
+  assert.equal((await request("/auth/login", "POST", valid, "",
+    { "x-forwarded-for": newClientAddress() })).status, 200);
+  // Move only this fixture's window into the past rather than waiting 15 minutes.
+  await pool.query("UPDATE factory_login_attempts SET expires_at=NOW()-INTERVAL '1 second' WHERE id=$1", [tokenHash(ip)]);
+  assert.equal((await request("/auth/login", "POST", valid, "", headers)).status, 200);
+  const { rows: [reset] } = await pool.query("SELECT count,expires_at FROM factory_login_attempts WHERE id=$1", [tokenHash(ip)]);
+  assert.equal(reset.count, 1);
+  assert(new Date(reset.expires_at).getTime() > Date.now());
+});
+
+test("production login and logout issue matching Secure, HttpOnly, SameSite cookies", async () => {
+  // Tests run sequentially. This changes cookie configuration only, not the
+  // existing development pool or its disposable factory fixtures.
+  const previous = process.env.NODE_ENV;
+  const headers = { "x-forwarded-for": newClientAddress() };
+  try {
+    for (const mode of ["development", "production"]) {
+      process.env.NODE_ENV = mode;
+      const login = await request("/auth/login", "POST", { username: tenants[0], password }, "", headers);
+      assert.equal(login.status, 200);
+      const issued = login.response.headers.get("set-cookie")!;
+      assert.match(issued, /^nexus_session=[a-f0-9]{64};/);
+      assert.match(issued, /;\s*Max-Age=43200(?:;|$)/);
+      const sessionCookie = issued.split(";")[0]!;
+      assert.equal((await request("/auth/session", "GET", undefined, sessionCookie)).body.authenticated, true);
+      const logout = await request("/auth/logout", "POST", undefined, sessionCookie);
+      assert.equal(logout.status, 200);
+      const cleared = logout.response.headers.get("set-cookie")!;
+      assert.match(cleared, /^nexus_session=;/);
+      assert.match(cleared, /;\s*Expires=Thu, 01 Jan 1970 00:00:00 GMT(?:;|$)/);
+      for (const value of [issued, cleared]) {
+        assert.match(value, /;\s*HttpOnly(?:;|$)/);
+        assert.match(value, /;\s*SameSite=Lax(?:;|$)/);
+        assert.match(value, /;\s*Path=\/(?:;|$)/);
+        assert.equal(/;\s*Secure(?:;|$)/.test(value), mode === "production");
+        assert.doesNotMatch(value, /;\s*Domain=/i);
+      }
+      assert.equal((await request("/auth/session", "GET", undefined, sessionCookie)).body.authenticated, false);
+    }
+  } finally {
+    if (previous === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = previous;
+  }
 });
 
 test("signed-out denial on every protected read and mutation", async () => {

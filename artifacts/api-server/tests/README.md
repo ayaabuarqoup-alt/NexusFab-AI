@@ -19,6 +19,11 @@ delete only those factories and their sessions in teardown. They never reset or
 modify demo factories. The runner rejects `NODE_ENV=production`. If the process
 is forcibly killed, its isolated `regression_*` fixtures may need cleanup.
 
+API requests use unique synthetic forwarded client addresses, with only their
+hashed throttle rows removed in teardown. The sequential cookie test temporarily
+sets `NODE_ENV=production` and restores it in `finally`; it uses the same
+development pool and disposable accounts, never a production database.
+
 The browser suite uses Playwright Chromium. Install its browser with
 `pnpm --filter @workspace/api-server exec playwright install chromium` or set
 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to a compatible installed Chromium.
@@ -33,6 +38,12 @@ allow four minutes for the full suite. A fresh browser context is used on each r
 
 ## Coverage
 
+- Mutation requests reject foreign/malformed Origin and cross-site fetch
+  metadata; matching direct/proxy hosts, headerless clients and safe methods pass.
+- Login attempts 1–15 pass the throttle; 16 onward return 429 with Retry-After.
+  Client buckets are independent and expired windows reset without sleeping.
+- Login/logout cookies match on Path, HttpOnly, SameSite=Lax and production-only
+  Secure, with a 12-hour lifetime and an expired cookie on logout.
 - Every protected route denies signed-out requests.
 - A second factory cannot read jobs, logs, summary or analyst source records, or
   mutate a first factory's logs, QC decisions or dispatch state.

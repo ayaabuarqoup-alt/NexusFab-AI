@@ -2,4 +2,5 @@
 - [Factory onboarding policy](private-onboarding.md) — public signup for new, empty factories is authorized; preserve staff invitations and existing tenant boundaries.
 - [Session cache transitions](session-cache-transitions.md) — preserve active query observers during login and tenant hydration; browser checks catch failures API tests cannot.
 - [Role selection](role-selection.md) — mandatory explicit choice from owner-approved roles; grants do not confer simultaneous session permissions.
-- [Operational alerts](operational-alerts.md) — Admin means Owner; factory-local alerts target approved Admin/Inspector accounts, with safe email activation and recovery.
+- [Operational alerts](operational-alerts.md) — factory-local alerts, explicit email activation, and safe recovery of uncertain sends.
+- [Production planning](production-planning.md) — fourth owner-approved role; UTC schedules, resource conflict checks, and explicitly limited forecasts.

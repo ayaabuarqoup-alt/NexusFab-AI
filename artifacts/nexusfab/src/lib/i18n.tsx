@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { enX, arX } from "./i18n-account";
 import { enY, arY } from "./i18n-ops";
 import { enZ, arZ } from "./i18n-roles";
+import { enP, arP } from "./i18n-plan";
 
 export type Lang = "en" | "ar";
 
@@ -52,6 +53,7 @@ const en = {
   notFound: "Page not found", backHome: "Back to overview",
   ...enY,
   ...enZ,
+  ...enP,
 };
 type Dict = typeof en;
 const ar: Dict = {
@@ -99,6 +101,7 @@ const ar: Dict = {
   notFound: "الصفحة غير موجودة", backHome: "العودة للنظرة العامة",
   ...arY,
   ...arZ,
+  ...arP,
 };
 export type TKey = keyof Dict;
 const dicts = { en, ar };

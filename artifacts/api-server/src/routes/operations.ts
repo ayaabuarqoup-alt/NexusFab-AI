@@ -7,6 +7,7 @@ import {
 } from "@workspace/api-zod";
 import { requireFactory, requireRoles } from "../middlewares/factory-auth";
 import { audit, loadVault, mutateVault, type Job, type Log } from "../lib/vault";
+import { enqueueAlert } from "../lib/notifications";
 import { summarize } from "../lib/analytics";
 import { analyzeRecords, AnalystInputError } from "../lib/analyst";
 
@@ -31,7 +32,7 @@ router.get("/jobs", async (_req, res): Promise<void> => {
 router.get("/logs", async (_req, res): Promise<void> => {
   res.json(ListLogsResponse.parse((await loadVault(res.locals.factory)).logs));
 });
-router.post("/jobs", requireRoles("owner","operator"), async (req, res): Promise<void> => {
+router.post("/jobs", requireRoles("owner","operator","production_planner"), async (req, res): Promise<void> => {
   const parsed = CreateJobBody.safeParse(req.body);
   if (!parsed.success) throw new OperationError("INVALID_INPUT");
   const data = parsed.data;
@@ -41,7 +42,7 @@ router.post("/jobs", requireRoles("owner","operator"), async (req, res): Promise
     const job: Job = { ...data, name: data.name.trim(), id: randomUUID(), status: "planned", goodQty: 0, rejects: 0 };
     audit(v,{userId:res.locals.userId,userName:res.locals.userName},"job_created",job.id,JSON.stringify(job));
     v.jobs.unshift(job); return job;
-  }, {userId:res.locals.userId,sessionId:res.locals.sessionId,roles:["owner","operator"]});
+  }, {userId:res.locals.userId,sessionId:res.locals.sessionId,roles:["owner","operator","production_planner"]});
   res.json(CreateJobResponse.parse(result));
 });
 router.post("/logs", requireRoles("owner","operator"), async (req, res): Promise<void> => {
@@ -52,7 +53,7 @@ router.post("/logs", requireRoles("owner","operator"), async (req, res): Promise
   if (!validDate(data.date) || !validTime(data.time)) throw new OperationError("INVALID_DATE");
   if (data.goodQty + data.rejects === 0 && data.downtimeMinutes === 0) throw new OperationError("EMPTY_LOG");
   if (data.downtimeMinutes > 0 && !data.reason.trim()) throw new OperationError("REASON_REQUIRED");
-  const result = await mutateVault(res.locals.factory, v => {
+  const result = await mutateVault(res.locals.factory, async (v, client) => {
     const job = v.jobs.find(j => j.id === data.jobId);
     if (!job) throw new OperationError("NOT_FOUND", 404);
     if (job.status === "dispatched") throw new OperationError("ALREADY_DISPATCHED", 409);
@@ -65,7 +66,9 @@ router.post("/logs", requireRoles("owner","operator"), async (req, res): Promise
     audit(v,{userId:res.locals.userId,userName:res.locals.userName},"log_created",log.id,JSON.stringify(log));
     // Validate before committing so a contract mismatch cannot poison the vault.
     CreateLogResponse.parse(log);
-    v.logs.unshift(log); return log;
+    v.logs.unshift(log);
+    await enqueueAlert(v,client,res.locals.factory,{kind:"production_status",title:job.name,message:`${job.status}: ${job.goodQty}/${job.target}`,targetId:job.id,actorName:res.locals.userName});
+    return log;
   }, {userId:res.locals.userId,sessionId:res.locals.sessionId,roles:["owner","operator"]});
   res.json(CreateLogResponse.parse(result));
 });
@@ -86,7 +89,7 @@ router.patch("/logs/:id/quality", requireRoles("owner","quality_inspector"), asy
 router.post("/jobs/:id/dispatch", requireRoles("owner"), async (req, res): Promise<void> => {
   const params = DispatchJobParams.safeParse(req.params);
   if (!params.success) throw new OperationError("INVALID_INPUT");
-  const result = await mutateVault(res.locals.factory, v => {
+  const result = await mutateVault(res.locals.factory, async (v, client) => {
     const job = v.jobs.find(j => j.id === params.data.id);
     if (!job) throw new OperationError("NOT_FOUND", 404);
     if (job.status === "dispatched") throw new OperationError("ALREADY_DISPATCHED", 409);
@@ -95,6 +98,7 @@ router.post("/jobs/:id/dispatch", requireRoles("owner"), async (req, res): Promi
     job.status = "dispatched";
     job.shippingStatus = "shipped";
     audit(v,{userId:res.locals.userId,userName:res.locals.userName},"job_dispatched",job.id);
+    await enqueueAlert(v,client,res.locals.factory,{kind:"production_status",title:job.name,message:"dispatched",targetId:job.id,actorName:res.locals.userName});
     return job;
   }, {userId:res.locals.userId,sessionId:res.locals.sessionId,roles:["owner"]});
   res.json(DispatchJobResponse.parse(result));

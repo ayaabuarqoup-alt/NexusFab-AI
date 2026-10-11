@@ -17,12 +17,12 @@ export function machineStates(v: Awaited<ReturnType<typeof loadVault>>): Machine
   return ["m1", "m2", "m3"].map((id, i) => v.machineStates?.find(m => m.id === id) ??
     { id: id as MachineState["id"], name: `Machine 0${i + 1}`, status: "unknown", note: "", updatedAt: "", updatedBy: "" });
 }
-router.patch("/jobs/:id", requireRoles("owner", "operator"), async (req, res) => {
+router.patch("/jobs/:id", requireRoles("owner", "operator", "production_planner"), async (req, res) => {
   const p = UpdateJobBody.safeParse(req.body);
   if (!p.success || !p.data.name.trim() || !["m1", "m2", "m3"].includes(p.data.machineId) ||
     !Number.isSafeInteger(p.data.target) || !validDate(p.data.startDate) || !validDate(p.data.dueDate) ||
     p.data.startDate > p.data.dueDate || !/^([01]\d|2[0-3]):[0-5]\d$/.test(p.data.startTime)) throw new OperationError("INVALID_INPUT");
-  const result = await mutateVault(res.locals.factory, v => {
+  const result = await mutateVault(res.locals.factory, async (v, client) => {
     const job = v.jobs.find(j => j.id === req.params.id);
     if (!job) throw new OperationError("NOT_FOUND", 404);
     if (job.status === "dispatched") throw new OperationError("ALREADY_DISPATCHED", 409);
@@ -33,14 +33,15 @@ router.patch("/jobs/:id", requireRoles("owner", "operator"), async (req, res) =>
     job.status = job.goodQty >= job.target ? "completed" : v.logs.some(l => l.jobId === job.id) ? "running" : "planned";
     if (job.status !== "completed") job.shippingStatus = "pending";
     audit(v, identity(res), "job_updated", job.id, JSON.stringify({ before, after: job }));
+    await enqueueAlert(v,client,res.locals.factory,{kind:"production_status",title:job.name,message:`Work order updated: ${job.status}`,targetId:job.id,actorName:res.locals.userName});
     return job;
-  }, actor(res, ["owner", "operator"]));
+  }, actor(res, ["owner", "operator", "production_planner"]));
   res.json(result);
 });
 router.patch("/jobs/:id/shipping", requireRoles("owner", "operator"), async (req, res) => {
   const p = UpdateShippingBody.safeParse(req.body);
   if (!p.success) throw new OperationError("INVALID_INPUT");
-  const result = await mutateVault(res.locals.factory, v => {
+  const result = await mutateVault(res.locals.factory, async (v, client) => {
     const job = v.jobs.find(j => j.id === req.params.id);
     if (!job) throw new OperationError("NOT_FOUND", 404);
     const current = job.shippingStatus ?? (job.status === "dispatched" ? "shipped" : "pending");
@@ -54,6 +55,7 @@ router.patch("/jobs/:id/shipping", requireRoles("owner", "operator"), async (req
     }
     job.shippingStatus = p.data.status;
     audit(v, identity(res), "shipping_updated", job.id, JSON.stringify({ before: current, after: p.data.status, note: p.data.note ?? "" }));
+    await enqueueAlert(v,client,res.locals.factory,{kind:"production_status",title:job.name,message:`Shipping: ${p.data.status}`,targetId:job.id,actorName:res.locals.userName});
     return job;
   }, actor(res, ["owner", "operator"]));
   res.json(result);

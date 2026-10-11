@@ -13,7 +13,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const ROLES: StaffInputRole[] = ["owner", "operator", "quality_inspector"];
+const ROLES: StaffInputRole[] = ["owner", "operator", "quality_inspector", "production_planner"];
 type R = StaffMemberRolesItem;
 const ordered = (rs: R[]) => ROLES.filter((r) => rs.includes(r));
 const grantsOf = (m: StaffMember): R[] => (m.roles?.length ? ordered(m.roles) : [m.role]);

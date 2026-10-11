@@ -11,4 +11,5 @@ export type NotificationKind = typeof NotificationKind[keyof typeof Notification
 export const NotificationKind = {
   production_issue: 'production_issue',
   machine_status: 'machine_status',
+  production_status: 'production_status',
 } as const;

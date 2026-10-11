@@ -10,7 +10,7 @@ export async function migrateAccounts() {
     CREATE TABLE IF NOT EXISTS factory_users (
       id text PRIMARY KEY, factory_id text NOT NULL REFERENCES factory_vaults(id),
       username text NOT NULL UNIQUE, name text NOT NULL,
-      role text NOT NULL CHECK (role IN ('owner','operator','quality_inspector')),
+      role text NOT NULL CHECK (role IN ('owner','operator','quality_inspector','production_planner')),
       password_hash text, active boolean NOT NULL DEFAULT true);
     ALTER TABLE factory_sessions ADD COLUMN IF NOT EXISTS user_id text REFERENCES factory_users(id);
     CREATE TABLE IF NOT EXISTS factory_invites (
@@ -18,6 +18,8 @@ export async function migrateAccounts() {
       expires_at timestamptz NOT NULL);
     CREATE TABLE IF NOT EXISTS factory_login_attempts (
       id text PRIMARY KEY, count integer NOT NULL, expires_at timestamptz NOT NULL);
+    ALTER TABLE factory_users DROP CONSTRAINT IF EXISTS factory_users_role_check;
+    ALTER TABLE factory_users ADD CONSTRAINT factory_users_role_check CHECK (role IN ('owner','operator','quality_inspector','production_planner'));
   `);
 }
 

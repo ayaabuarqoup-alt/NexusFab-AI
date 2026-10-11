@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, ClipboardCheck, Factory, LogOut, ShieldCheck, Wrench, type LucideIcon } from "lucide-react";
+import { ArrowRight, CalendarRange, ClipboardCheck, Factory, LogOut, ShieldCheck, Wrench, type LucideIcon } from "lucide-react";
 import { useSelectRole, useLogout, type Session, type SessionAvailableRolesItem } from "@workspace/api-client-react";
 import { useI18n, errorMessage, type TKey } from "@/lib/i18n";
 import { LangToggle, usePageMeta } from "@/components/shell";
 import { updateSession } from "@/components/common";
 import { cn } from "@/lib/utils";
 
-const ICONS: Record<SessionAvailableRolesItem, LucideIcon> = { owner: ShieldCheck, operator: Wrench, quality_inspector: ClipboardCheck };
+const ICONS: Record<SessionAvailableRolesItem, LucideIcon> = { owner: ShieldCheck, operator: Wrench, quality_inspector: ClipboardCheck, production_planner: CalendarRange };
 
 export default function SelectRole({ session }: { session: Session }) {
   const { t } = useI18n();

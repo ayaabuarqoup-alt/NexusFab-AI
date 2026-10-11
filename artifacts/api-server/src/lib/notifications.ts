@@ -7,7 +7,7 @@ export const validEmail = (email: string) => email.length <= 254 && /^[A-Za-z0-9
 export async function enqueueAlert(v: Vault, client: DatabaseClient, factoryId: string,
   input: Omit<FactoryNotification, "id" | "createdAt" | "recipientIds" | "emailEnabled">) {
   const { rows } = await client.query(`SELECT id,email FROM factory_users WHERE factory_id=$1 AND active=true
-    AND password_hash IS NOT NULL AND COALESCE(roles,ARRAY[role]) && ARRAY['owner','quality_inspector']::text[]`, [factoryId]);
+    AND password_hash IS NOT NULL AND COALESCE(roles,ARRAY[role]) && ARRAY['owner','quality_inspector','production_planner']::text[]`, [factoryId]);
   const settings = await client.query("SELECT email_alerts_enabled FROM factory_vaults WHERE id=$1", [factoryId]);
   const notification: FactoryNotification = { ...input, id: randomUUID(), createdAt: new Date().toISOString(),
     recipientIds: rows.map(r => r.id), emailEnabled: settings.rows[0].email_alerts_enabled };
@@ -29,7 +29,7 @@ export async function enqueueAlert(v: Vault, client: DatabaseClient, factoryId: 
 export async function notificationSettings(factoryId: string) {
   const settings = await pool.query("SELECT email_alerts_enabled FROM factory_vaults WHERE id=$1", [factoryId]);
   const recipients = await pool.query(`SELECT email FROM factory_users WHERE factory_id=$1 AND active=true
-    AND password_hash IS NOT NULL AND COALESCE(roles,ARRAY[role]) && ARRAY['owner','quality_inspector']::text[]`, [factoryId]);
+    AND password_hash IS NOT NULL AND COALESCE(roles,ARRAY[role]) && ARRAY['owner','quality_inspector','production_planner']::text[]`, [factoryId]);
   return { enabled: settings.rows[0].email_alerts_enabled, totalRecipients: recipients.rows.length,
     readyRecipients: recipients.rows.filter(r => validEmail(r.email)).length };
 }

@@ -36,6 +36,7 @@ export const StaffInputRole = {
   owner: 'owner',
   operator: 'operator',
   quality_inspector: 'quality_inspector',
+  production_planner: 'production_planner',
 } as const;
 
 export type StaffInputRolesItem = typeof StaffInputRolesItem[keyof typeof StaffInputRolesItem];
@@ -45,6 +46,7 @@ export const StaffInputRolesItem = {
   owner: 'owner',
   operator: 'operator',
   quality_inspector: 'quality_inspector',
+  production_planner: 'production_planner',
 } as const;
 
 export interface StaffInput {
@@ -58,7 +60,7 @@ export interface StaffInput {
   role: StaffInputRole;
   /**
      * @minItems 1
-     * @maxItems 3
+     * @maxItems 4
      */
   roles?: StaffInputRolesItem[];
   /** @maxLength 254 */
@@ -72,6 +74,7 @@ export const StaffUpdateRole = {
   owner: 'owner',
   operator: 'operator',
   quality_inspector: 'quality_inspector',
+  production_planner: 'production_planner',
 } as const;
 
 export type StaffUpdateRolesItem = typeof StaffUpdateRolesItem[keyof typeof StaffUpdateRolesItem];
@@ -81,6 +84,7 @@ export const StaffUpdateRolesItem = {
   owner: 'owner',
   operator: 'operator',
   quality_inspector: 'quality_inspector',
+  production_planner: 'production_planner',
 } as const;
 
 export interface StaffUpdate {
@@ -88,7 +92,7 @@ export interface StaffUpdate {
   active: boolean;
   /**
      * @minItems 1
-     * @maxItems 3
+     * @maxItems 4
      */
   roles?: StaffUpdateRolesItem[];
   /** @maxLength 254 */
@@ -109,6 +113,7 @@ export const StaffMemberRole = {
   owner: 'owner',
   operator: 'operator',
   quality_inspector: 'quality_inspector',
+  production_planner: 'production_planner',
 } as const;
 
 export type StaffMemberRolesItem = typeof StaffMemberRolesItem[keyof typeof StaffMemberRolesItem];
@@ -118,6 +123,7 @@ export const StaffMemberRolesItem = {
   owner: 'owner',
   operator: 'operator',
   quality_inspector: 'quality_inspector',
+  production_planner: 'production_planner',
 } as const;
 
 export interface StaffMember {
@@ -129,7 +135,7 @@ export interface StaffMember {
   activated: boolean;
   /**
      * @minItems 1
-     * @maxItems 3
+     * @maxItems 4
      */
   roles: StaffMemberRolesItem[];
   /** @maxLength 254 */
@@ -158,6 +164,7 @@ export const SessionRole = {
   operator: 'operator',
   quality_inspector: 'quality_inspector',
   '': '',
+  production_planner: 'production_planner',
 } as const;
 
 export type SessionAvailableRolesItem = typeof SessionAvailableRolesItem[keyof typeof SessionAvailableRolesItem];
@@ -167,6 +174,7 @@ export const SessionAvailableRolesItem = {
   owner: 'owner',
   operator: 'operator',
   quality_inspector: 'quality_inspector',
+  production_planner: 'production_planner',
 } as const;
 
 export interface Session {
@@ -454,6 +462,7 @@ export const SelectRoleInputRole = {
   owner: 'owner',
   operator: 'operator',
   quality_inspector: 'quality_inspector',
+  production_planner: 'production_planner',
 } as const;
 
 export interface SelectRoleInput {
@@ -621,6 +630,7 @@ export type NotificationKind = typeof NotificationKind[keyof typeof Notification
 export const NotificationKind = {
   production_issue: 'production_issue',
   machine_status: 'machine_status',
+  production_status: 'production_status',
 } as const;
 
 export type NotificationEmailStatus = typeof NotificationEmailStatus[keyof typeof NotificationEmailStatus];
@@ -693,5 +703,96 @@ export interface ProfileInput {
   name: string;
   /** @maxLength 254 */
   email: string;
+}
+
+export type PlanInputPeriod = typeof PlanInputPeriod[keyof typeof PlanInputPeriod];
+
+
+export const PlanInputPeriod = {
+  daily: 'daily',
+  weekly: 'weekly',
+} as const;
+
+export type PlanInputStatus = typeof PlanInputStatus[keyof typeof PlanInputStatus];
+
+
+export const PlanInputStatus = {
+  draft: 'draft',
+  scheduled: 'scheduled',
+  completed: 'completed',
+} as const;
+
+export type PlanAssignmentMachineId = typeof PlanAssignmentMachineId[keyof typeof PlanAssignmentMachineId];
+
+
+export const PlanAssignmentMachineId = {
+  m1: 'm1',
+  m2: 'm2',
+  m3: 'm3',
+} as const;
+
+export interface PlanAssignment {
+  jobId: string;
+  machineId: PlanAssignmentMachineId;
+  operatorId: string;
+  startAt: string;
+  endAt: string;
+}
+
+export interface PlanInput {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  period: PlanInputPeriod;
+  startDate: string;
+  endDate: string;
+  status: PlanInputStatus;
+  /** @maxLength 2000 */
+  notes?: string;
+  /** @maxItems 100 */
+  assignments: PlanAssignment[];
+}
+
+export type ProductionPlanPeriod = typeof ProductionPlanPeriod[keyof typeof ProductionPlanPeriod];
+
+
+export const ProductionPlanPeriod = {
+  daily: 'daily',
+  weekly: 'weekly',
+} as const;
+
+export type ProductionPlanStatus = typeof ProductionPlanStatus[keyof typeof ProductionPlanStatus];
+
+
+export const ProductionPlanStatus = {
+  draft: 'draft',
+  scheduled: 'scheduled',
+  completed: 'completed',
+} as const;
+
+export interface ProductionPlan {
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  name: string;
+  period: ProductionPlanPeriod;
+  startDate: string;
+  endDate: string;
+  status: ProductionPlanStatus;
+  /** @maxLength 2000 */
+  notes?: string;
+  /** @maxItems 100 */
+  assignments: PlanAssignment[];
+  id: string;
+  updatedAt: string;
+  updatedBy: string;
+}
+
+export interface PlanningOperator {
+  id: string;
+  name: string;
 }
 

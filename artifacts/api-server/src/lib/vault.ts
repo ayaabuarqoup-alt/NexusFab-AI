@@ -1,6 +1,6 @@
 import { createCipheriv, createDecipheriv, createHmac, randomBytes, randomUUID, scryptSync } from "node:crypto";
 import { pool } from "@workspace/db";
-import type { CreateJobResponse, CreateLogResponse, CreateIssueResponse, UpdateMachineStatusResponse } from "@workspace/api-zod";
+import type { CreateJobResponse, CreateLogResponse, CreateIssueResponse, UpdateMachineStatusResponse, CreatePlanResponse } from "@workspace/api-zod";
 import type { DatabaseClient } from "./roles";
 
 export type Job = ReturnType<typeof CreateJobResponse.parse>;
@@ -9,10 +9,11 @@ export interface AuditEvent { id: string; actorId: string; actorName: string; ac
 export type Issue = ReturnType<typeof CreateIssueResponse.parse>;
 export type MachineState = ReturnType<typeof UpdateMachineStatusResponse.parse>;
 export interface FactoryNotification {
-  id: string; kind: "production_issue" | "machine_status"; title: string; message: string;
+  id: string; kind: "production_issue" | "machine_status" | "production_status"; title: string; message: string;
   targetId: string; actorName: string; createdAt: string; recipientIds: string[]; emailEnabled: boolean;
 }
-export interface Vault { jobs: Job[]; logs: Log[]; audit?: AuditEvent[]; issues?: Issue[]; machineStates?: MachineState[]; notifications?: FactoryNotification[] }
+export type ProductionPlan = ReturnType<typeof CreatePlanResponse.parse>;
+export interface Vault { jobs: Job[]; logs: Log[]; audit?: AuditEvent[]; issues?: Issue[]; machineStates?: MachineState[]; notifications?: FactoryNotification[]; plans?: ProductionPlan[] }
 export function audit(v: Vault, actor: { userId: string; userName: string }, action: string, targetId: string, detail = "") {
   (v.audit ??= []).unshift({ id: randomUUID(), actorId: actor.userId, actorName: actor.userName, action, targetId, at: new Date().toISOString(), detail });
 }

@@ -17,7 +17,7 @@ export async function deliverEmail(row: OutboxRecord, send: (email: AlertEmail) 
   const { rows } = await pool.query(`SELECT u.email,u.active,u.password_hash,u.roles,u.role,f.email_alerts_enabled,f.payload,f.name
     FROM factory_users u JOIN factory_vaults f ON f.id=u.factory_id WHERE u.id=$1 AND f.id=$2`, [row.user_id, row.factory_id]);
   const user = rows[0];
-  if (!user || !user.active || !user.password_hash || !approvedRoles(user).some(r => ["owner", "quality_inspector"].includes(r))) {
+  if (!user || !user.active || !user.password_hash || !approvedRoles(user).some(r => ["owner", "quality_inspector", "production_planner"].includes(r))) {
     await finish(row, "cancelled", "RECIPIENT_NO_LONGER_APPROVED"); return;
   }
   if (!user.email_alerts_enabled) { await finish(row, "blocked", "EMAIL_DISABLED"); return; }

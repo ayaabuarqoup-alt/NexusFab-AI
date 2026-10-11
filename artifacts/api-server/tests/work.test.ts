@@ -9,6 +9,7 @@ import { tokenHash } from "../src/middlewares/factory-auth";
 import { deliverEmail } from "../src/lib/email-worker";
 import { EmailFailure, encodeAlertEmail } from "../src/lib/alert-email";
 import { startRealtime } from "../src/lib/realtime";
+import { migrateAccounts } from "../src/lib/accounts";
 const tenant = `work_${randomUUID()}`, foreign = `${tenant}_foreign`, password = randomUUID();
 let server: ReturnType<typeof app.listen>, base: string, stopLive: () => Promise<void>;
 const cookies: Record<string,string> = {};
@@ -18,6 +19,7 @@ async function req(path: string, method = "GET", data?: unknown, role = "owner")
   return { status: r.status, data: await r.json(), cookie: r.headers.get("set-cookie")?.split(";")[0] ?? "" };
 }
 before(async () => {
+  await migrateAccounts();
   for (const id of [tenant, foreign]) await pool.query("INSERT INTO factory_vaults(id,name,password_hash,payload) VALUES($1,'Test factory',$2,$3)", [id,hashPassword(password),encrypt(id,{jobs:[],logs:[]})]);
   for (const role of ["owner","operator","quality_inspector","foreign"]) {
     const id = `${tenant}_${role}`;
@@ -36,6 +38,7 @@ before(async () => {
 after(async () => {
   await stopLive();
   server.closeAllConnections(); await new Promise<void>(r=>server.close(()=>r()));
+  await pool.query("DELETE FROM factory_invites WHERE user_id IN (SELECT id FROM factory_users WHERE factory_id=ANY($1::text[]))",[[tenant,foreign]]);
   await pool.query("DELETE FROM factory_sessions WHERE factory_id=ANY($1::text[])",[[tenant,foreign]]);
   await pool.query("DELETE FROM factory_users WHERE factory_id=ANY($1::text[])",[[tenant,foreign]]);
   await pool.query("DELETE FROM factory_vaults WHERE id=ANY($1::text[])",[[tenant,foreign]]);
@@ -129,4 +132,36 @@ test("email delivery records provider acceptance, uncertain responses, and revok
   const raw=Buffer.from(encodeAlertEmail({id:randomUUID(),recipient:row.email,factoryName:"Factory",title:"عنوان",message:"تفاصيل",actorName:"Inspector",createdAt:new Date().toISOString()},"sender@example.invalid"),"base64url").toString();
   assert.match(raw,/Content-Type: text\/plain; charset="UTF-8"/);
   assert.ok((await loadVault(tenant)).notifications!.length>=3);
+});
+test("planner grants, schedules, conflicts, tenant isolation, notifications and audit",async()=>{
+  await req("/notification-settings","PATCH",{enabled:false});
+  const invite=await req("/staff","POST",{username:`${tenant}_planner`,name:"Planner",role:"production_planner",roles:["production_planner"]});
+  assert.equal(invite.status,200);
+  assert.equal((await req("/auth/activate","POST",{token:invite.data.token,password})).status,200);
+  const login=await req("/auth/login","POST",{username:`${tenant}_planner`,password},"planner");
+  cookies.planner=login.cookie;assert.deepEqual(login.data.availableRoles,["production_planner"]);
+  assert.equal((await req("/plans","GET",undefined,"planner")).status,403);
+  assert.equal((await req("/auth/role","POST",{role:"production_planner"},"planner")).status,200);
+  for(const path of ["/staff","/audit","/email-deliveries"])assert.equal((await req(path,"GET",undefined,"planner")).status,403);
+  assert.equal((await req("/machines/m1/status","PATCH",{status:"running",note:""},"planner")).status,403);
+  const job=await req("/jobs","POST",{name:"Planned run",machineId:"m2",target:100,startDate:"2026-10-12",dueDate:"2026-10-12",startTime:"08:00"},"planner");
+  assert.equal(job.status,200);
+  const operators=await req("/planning/operators","GET",undefined,"planner");
+  assert.equal(operators.data.length,1);
+  const input={name:"Monday",period:"daily",startDate:"2026-10-12",endDate:"2026-10-12",status:"scheduled",
+    assignments:[{jobId:job.data.id,machineId:"m2",operatorId:operators.data[0].id,startAt:"2026-10-12T08:00:00Z",endAt:"2026-10-12T10:00:00Z"}]};
+  const plan=await req("/plans","POST",input,"planner");assert.equal(plan.status,200);
+  assert.equal((await req("/plans","POST",input,"planner")).status,409);
+  assert.equal((await req("/plans","POST",input,"operator")).status,403);
+  assert.equal((await req(`/plans/${plan.data.id}`,"PATCH",input,"foreign")).status,404);
+  assert.equal((await req("/plans","GET",undefined,"foreign")).data.length,0);
+  assert.equal((await req("/plans","GET",undefined,"operator")).data[0].id,plan.data.id);
+  assert.equal((await req(`/plans/${plan.data.id}`,"PATCH",{...input,name:"Revised Monday"},"planner")).status,200);
+  assert.equal((await req("/plans","POST",{...input,startDate:"2026-02-30"},"planner")).status,400);
+  assert.equal((await req("/plans","POST",{...input,assignments:[{...input.assignments[0],operatorId:"foreign-user"}]},"planner")).status,400);
+  await req("/issues","POST",{machineId:"m2",title:"Planner alert",description:"Review plan",severity:"normal"},"operator");
+  const notices=(await req("/notifications","GET",undefined,"planner")).data;
+  assert.ok(notices.some((n:{kind:string})=>n.kind==="production_issue"));
+  assert.ok(notices.some((n:{kind:string})=>n.kind==="production_status"));
+  assert.ok((await req("/audit")).data.some((a:{action:string;actorName:string})=>a.action==="plan_updated"&&a.actorName==="Planner"));
 });

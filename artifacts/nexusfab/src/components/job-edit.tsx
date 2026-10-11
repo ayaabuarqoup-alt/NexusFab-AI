@@ -64,7 +64,7 @@ export function ShippingControl({ job, pendingQc }: { job: Job; pendingQc: numbe
   const { t } = useI18n();
   const qc = useQueryClient();
   const { toast } = useToast();
-  const { canEditJobs } = useRole();
+  const { canShip } = useRole();
   const cur = job.shippingStatus ?? (job.status === "dispatched" ? "shipped" : "pending");
   const [open, setOpen] = useState(false);
   const [next, setNext] = useState<ShippingInputStatus>(cur);
@@ -82,7 +82,7 @@ export function ShippingControl({ job, pendingQc }: { job: Job; pendingQc: numbe
         {SHIP.map((s, i) => <span key={s} title={t(`ship_${s}` as TKey)} className={cn("h-1.5 w-5 rounded-full", i <= idx ? "bg-[hsl(32_95%_52%)]" : "bg-secondary")} />)}
         <span className="ms-1.5 text-[11px] font-medium">{t(`ship_${cur}` as TKey)}</span>
       </div>
-      {canEditJobs && <button onClick={() => { setNext(cur); upd.reset(); setOpen(true); }} className={ghostCls} data-testid={`button-shipping-${job.id}`}><Truck className="h-3.5 w-3.5 rtl:-scale-x-100" />{t("updateShipping")}</button>}
+      {canShip && <button onClick={() => { setNext(cur); upd.reset(); setOpen(true); }} className={ghostCls} data-testid={`button-shipping-${job.id}`}><Truck className="h-3.5 w-3.5 rtl:-scale-x-100" />{t("updateShipping")}</button>}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>{t("shipping")} · {job.name}</DialogTitle><DialogDescription>{t("shipGateReady")} {t("shipGateDispatch")}</DialogDescription></DialogHeader>

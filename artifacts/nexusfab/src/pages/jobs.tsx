@@ -19,7 +19,7 @@ function JobForm() {
   const qc = useQueryClient();
   const { toast } = useToast();
   const prot = useProtected();
-  const { canCreate } = useRole();
+  const { canCreateJobs: canCreate } = useRole();
   const summary = useGetSummary({ query: { queryKey: getGetSummaryQueryKey(), ...prot } });
   const machines = summary.data?.machines ?? [];
   const [f, setF] = useState({ name: "", machineId: "", target: "", startDate: today(), dueDate: today(), startTime: "08:00" });

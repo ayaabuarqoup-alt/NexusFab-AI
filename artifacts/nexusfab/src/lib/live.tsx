@@ -11,7 +11,7 @@ const Ctx = createContext<LiveStatus>("offline");
 export const useLiveStatus = () => useContext(Ctx);
 
 export function targetHref(n: Pick<Notification, "kind" | "targetId">) {
-  return n.kind === "machine_status" ? "/machines" : `/issues#${n.targetId}`;
+  return n.kind === "machine_status" ? "/machines" : n.kind === "production_status" ? "/jobs" : `/issues#${n.targetId}`;
 }
 
 /** One native EventSource per mounted Shell (Shell is keyed by tenant::user::role, so identity changes remount it). */

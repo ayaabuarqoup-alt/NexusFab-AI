@@ -39,7 +39,10 @@ import type {
   NotificationSettings,
   NotificationSettingsInput,
   PasswordInput,
+  PlanInput,
+  PlanningOperator,
   ProductionLog,
+  ProductionPlan,
   ProfileInput,
   QualityInput,
   RegistrationInput,
@@ -2753,4 +2756,311 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getUpdateProfileMutationOptions(options));
     }
+
+export const getListPlansUrl = () => {
+
+
+
+
+  return `/api/plans`
+}
+
+export const listPlans = async ( options?: Parameters<typeof customFetch>[1]): Promise<ProductionPlan[]> => {
+
+  return customFetch<ProductionPlan[]>(getListPlansUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPlansQueryKey = () => {
+    return [
+    `/api/plans`
+    ] as const;
+    }
+
+
+export const getListPlansQueryOptions = <TData = Awaited<ReturnType<typeof listPlans>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPlans>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPlansQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPlans>>> = ({ signal }) => listPlans({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPlans>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPlansQueryResult = NonNullable<Awaited<ReturnType<typeof listPlans>>>
+export type ListPlansQueryError = ErrorType<unknown>
+
+
+
+export function useListPlans<TData = Awaited<ReturnType<typeof listPlans>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPlans>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPlansQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreatePlanUrl = () => {
+
+
+
+
+  return `/api/plans`
+}
+
+export const createPlan = async (planInput: PlanInput, options?: Parameters<typeof customFetch>[1]): Promise<ProductionPlan> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ProductionPlan>(getCreatePlanUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(planInput)
+  }
+);}
+
+
+
+
+
+export const getCreatePlanMutationKey = () => ['createPlan'] as const;
+
+export const getCreatePlanMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPlan>>, TError,CreatePlanMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPlan>>, TError,CreatePlanMutationVariables, TContext> => {
+
+const mutationKey = getCreatePlanMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPlan>>, CreatePlanMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPlan(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePlanMutationResult = NonNullable<Awaited<ReturnType<typeof createPlan>>>
+    export type CreatePlanMutationBody = BodyType<PlanInput>
+    export type CreatePlanMutationError = ErrorType<unknown>
+    export type CreatePlanMutationVariables = {data: BodyType<PlanInput>}
+
+    export const useCreatePlan = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPlan>>, TError,CreatePlanMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPlan>>,
+        TError,
+        CreatePlanMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreatePlanMutationOptions(options));
+    }
+
+export const getUpdatePlanUrl = (id: string,) => {
+
+
+
+
+  return `/api/plans/${id}`
+}
+
+export const updatePlan = async (id: string,
+    planInput: PlanInput, options?: Parameters<typeof customFetch>[1]): Promise<ProductionPlan> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ProductionPlan>(getUpdatePlanUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(planInput)
+  }
+);}
+
+
+
+
+
+export const getUpdatePlanMutationKey = () => ['updatePlan'] as const;
+
+export const getUpdatePlanMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePlan>>, TError,UpdatePlanMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updatePlan>>, TError,UpdatePlanMutationVariables, TContext> => {
+
+const mutationKey = getUpdatePlanMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updatePlan>>, UpdatePlanMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updatePlan(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdatePlanMutationResult = NonNullable<Awaited<ReturnType<typeof updatePlan>>>
+    export type UpdatePlanMutationBody = BodyType<PlanInput>
+    export type UpdatePlanMutationError = ErrorType<unknown>
+    export type UpdatePlanMutationVariables = {id: string;data: BodyType<PlanInput>}
+
+    export const useUpdatePlan = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePlan>>, TError,UpdatePlanMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updatePlan>>,
+        TError,
+        UpdatePlanMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdatePlanMutationOptions(options));
+    }
+
+export const getListPlanningOperatorsUrl = () => {
+
+
+
+
+  return `/api/planning/operators`
+}
+
+export const listPlanningOperators = async ( options?: Parameters<typeof customFetch>[1]): Promise<PlanningOperator[]> => {
+
+  return customFetch<PlanningOperator[]>(getListPlanningOperatorsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPlanningOperatorsQueryKey = () => {
+    return [
+    `/api/planning/operators`
+    ] as const;
+    }
+
+
+export const getListPlanningOperatorsQueryOptions = <TData = Awaited<ReturnType<typeof listPlanningOperators>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPlanningOperators>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPlanningOperatorsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPlanningOperators>>> = ({ signal }) => listPlanningOperators({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPlanningOperators>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPlanningOperatorsQueryResult = NonNullable<Awaited<ReturnType<typeof listPlanningOperators>>>
+export type ListPlanningOperatorsQueryError = ErrorType<unknown>
+
+
+
+export function useListPlanningOperators<TData = Awaited<ReturnType<typeof listPlanningOperators>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPlanningOperators>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPlanningOperatorsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 

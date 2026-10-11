@@ -898,6 +898,108 @@
           }
         }
       }
+    },
+    "/plans": {
+      "get": {
+        "operationId": "listPlans",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProductionPlan"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createPlan",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductionPlan"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/plans/{id}": {
+      "patch": {
+        "operationId": "updatePlan",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductionPlan"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/planning/operators": {
+      "get": {
+        "operationId": "listPlanningOperators",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PlanningOperator"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -975,7 +1077,8 @@
             "enum": [
               "owner",
               "operator",
-              "quality_inspector"
+              "quality_inspector",
+              "production_planner"
             ]
           },
           "roles": {
@@ -985,11 +1088,12 @@
               "enum": [
                 "owner",
                 "operator",
-                "quality_inspector"
+                "quality_inspector",
+                "production_planner"
               ]
             },
             "minItems": 1,
-            "maxItems": 3,
+            "maxItems": 4,
             "uniqueItems": true
           },
           "email": {
@@ -1010,7 +1114,8 @@
             "enum": [
               "owner",
               "operator",
-              "quality_inspector"
+              "quality_inspector",
+              "production_planner"
             ]
           },
           "active": {
@@ -1023,11 +1128,12 @@
               "enum": [
                 "owner",
                 "operator",
-                "quality_inspector"
+                "quality_inspector",
+                "production_planner"
               ]
             },
             "minItems": 1,
-            "maxItems": 3,
+            "maxItems": 4,
             "uniqueItems": true
           },
           "email": {
@@ -1071,7 +1177,8 @@
             "enum": [
               "owner",
               "operator",
-              "quality_inspector"
+              "quality_inspector",
+              "production_planner"
             ]
           },
           "active": {
@@ -1087,11 +1194,12 @@
               "enum": [
                 "owner",
                 "operator",
-                "quality_inspector"
+                "quality_inspector",
+                "production_planner"
               ]
             },
             "minItems": 1,
-            "maxItems": 3,
+            "maxItems": 4,
             "uniqueItems": true
           },
           "email": {
@@ -1168,7 +1276,8 @@
               "owner",
               "operator",
               "quality_inspector",
-              ""
+              "",
+              "production_planner"
             ]
           },
           "authenticated": {
@@ -1187,7 +1296,8 @@
               "enum": [
                 "owner",
                 "operator",
-                "quality_inspector"
+                "quality_inspector",
+                "production_planner"
               ]
             }
           },
@@ -1741,7 +1851,8 @@
             "enum": [
               "owner",
               "operator",
-              "quality_inspector"
+              "quality_inspector",
+              "production_planner"
             ]
           }
         }
@@ -1974,7 +2085,8 @@
             "type": "string",
             "enum": [
               "production_issue",
-              "machine_status"
+              "machine_status",
+              "production_status"
             ]
           },
           "title": {
@@ -2118,6 +2230,165 @@
           "name",
           "email"
         ]
+      },
+      "PlanInput": {
+        "type": "object",
+        "required": [
+          "name",
+          "period",
+          "startDate",
+          "endDate",
+          "status",
+          "assignments"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "period": {
+            "type": "string",
+            "enum": [
+              "daily",
+              "weekly"
+            ]
+          },
+          "startDate": {
+            "type": "string"
+          },
+          "endDate": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "scheduled",
+              "completed"
+            ]
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "assignments": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/PlanAssignment"
+            }
+          }
+        }
+      },
+      "PlanAssignment": {
+        "type": "object",
+        "required": [
+          "jobId",
+          "machineId",
+          "operatorId",
+          "startAt",
+          "endAt"
+        ],
+        "properties": {
+          "jobId": {
+            "type": "string"
+          },
+          "machineId": {
+            "type": "string",
+            "enum": [
+              "m1",
+              "m2",
+              "m3"
+            ]
+          },
+          "operatorId": {
+            "type": "string"
+          },
+          "startAt": {
+            "type": "string"
+          },
+          "endAt": {
+            "type": "string"
+          }
+        }
+      },
+      "ProductionPlan": {
+        "type": "object",
+        "required": [
+          "name",
+          "period",
+          "startDate",
+          "endDate",
+          "status",
+          "assignments",
+          "id",
+          "updatedAt",
+          "updatedBy"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "period": {
+            "type": "string",
+            "enum": [
+              "daily",
+              "weekly"
+            ]
+          },
+          "startDate": {
+            "type": "string"
+          },
+          "endDate": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "scheduled",
+              "completed"
+            ]
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "assignments": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "$ref": "#/components/schemas/PlanAssignment"
+            }
+          },
+          "id": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "updatedBy": {
+            "type": "string"
+          }
+        }
+      },
+      "PlanningOperator": {
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
       }
     }
   }

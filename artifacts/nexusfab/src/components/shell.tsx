@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useQueryClient, useIsFetching } from "@tanstack/react-query";
-import { Activity, AlertOctagon, BarChart3, Bell, Bot, ClipboardCheck, Factory, Gauge, History, LayoutDashboard, ListChecks, LogOut, UserCog, Menu, RotateCw, X } from "lucide-react";
+import { Activity, CalendarRange, LineChart, CalendarClock, AlertOctagon, BarChart3, Bell, Bot, ClipboardCheck, Factory, Gauge, History, LayoutDashboard, ListChecks, LogOut, UserCog, Menu, RotateCw, X } from "lucide-react";
 import { useGetSession, getGetSessionQueryKey, useGetSummary, getGetSummaryQueryKey, useLogout } from "@workspace/api-client-react";
 import { useI18n, errorMessage, type TKey } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
@@ -10,17 +10,20 @@ import { LiveProvider } from "@/lib/live";
 import { LiveBadge, NotificationBell } from "@/components/alerts";
 import { cn } from "@/lib/utils";
 
-type R = "owner" | "operator" | "quality_inspector";
-const ALL: R[] = ["owner", "operator", "quality_inspector"];
+type R = "owner" | "operator" | "quality_inspector" | "production_planner";
+const ALL: R[] = ["owner", "operator", "quality_inspector", "production_planner"];
 export const nav: { href: string; key: TKey; icon: typeof Gauge; roles: R[] }[] = [
   { href: "/", key: "nav_home", icon: LayoutDashboard, roles: ALL },
   { href: "/reports", key: "nav_reports", icon: BarChart3, roles: ["owner"] },
-  { href: "/jobs", key: "nav_jobs", icon: ListChecks, roles: ["owner", "operator"] },
+  { href: "/planning", key: "nav_planning", icon: CalendarRange, roles: ["owner", "production_planner"] },
+  { href: "/schedule", key: "nav_schedule", icon: CalendarClock, roles: ["operator", "quality_inspector"] },
+  { href: "/planning-analytics", key: "nav_planningAnalytics", icon: LineChart, roles: ["owner", "production_planner"] },
+  { href: "/jobs", key: "nav_jobs", icon: ListChecks, roles: ["owner", "operator", "production_planner"] },
   { href: "/production", key: "nav_production", icon: Activity, roles: ALL },
   { href: "/quality", key: "nav_quality", icon: ClipboardCheck, roles: ["owner", "quality_inspector"] },
   { href: "/issues", key: "nav_issues", icon: AlertOctagon, roles: ALL },
   { href: "/machines", key: "nav_machines", icon: Gauge, roles: ALL },
-  { href: "/notifications", key: "nav_notifications", icon: Bell, roles: ["owner", "quality_inspector"] },
+  { href: "/notifications", key: "nav_notifications", icon: Bell, roles: ["owner", "quality_inspector", "production_planner"] },
   { href: "/audit", key: "nav_audit", icon: History, roles: ["owner"] },
   { href: "/copilot", key: "nav_copilot", icon: Bot, roles: ALL },
   { href: "/account", key: "nav_account", icon: UserCog, roles: ALL },

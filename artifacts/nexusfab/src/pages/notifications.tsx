@@ -27,7 +27,7 @@ function EmailSettings() {
     onSuccess: (d) => { qc.setQueryData(getGetNotificationSettingsQueryKey(), d); qc.invalidateQueries({ queryKey: getGetNotificationSettingsQueryKey() }); toast({ title: t("settingsSaved") }); setConfirm(false); },
     onError: (e) => toast({ title: t("error"), description: errorMessage(e, t), variant: "destructive" }),
   } });
-  const eligible = (staff.data ?? []).filter((m) => m.active && (m.roles?.length ? m.roles : [m.role]).some((r) => r === "owner" || r === "quality_inspector"));
+  const eligible = (staff.data ?? []).filter((m) => m.active && (m.roles?.length ? m.roles : [m.role]).some((r) => r === "owner" || r === "quality_inspector" || r === "production_planner"));
   const withEmail = eligible.filter((m) => m.email?.trim());
   const missing = eligible.filter((m) => !m.email?.trim());
   if (st.isError) return <Panel title={t("emailSettings")}><ErrorState error={st.error} onRetry={() => st.refetch()} /></Panel>;

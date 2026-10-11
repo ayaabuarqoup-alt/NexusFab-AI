@@ -12,4 +12,5 @@ export const StaffMemberRole = {
   owner: 'owner',
   operator: 'operator',
   quality_inspector: 'quality_inspector',
+  production_planner: 'production_planner',
 } as const;

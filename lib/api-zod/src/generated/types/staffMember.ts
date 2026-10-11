@@ -16,7 +16,7 @@ export interface StaffMember {
   activated: boolean;
   /**
      * @minItems 1
-     * @maxItems 3
+     * @maxItems 4
      */
   roles: StaffMemberRolesItem[];
   /** @maxLength 254 */

@@ -7,7 +7,7 @@ The user requires customized Admin, Quality Inspector and Operator dashboards. A
 
 **Why:** These are the user's explicit specifications; Admin maps to the existing Owner role rather than granting a new permission.
 
-**How to apply:** Keep notifications factory-local and target active accounts with approved Admin/Inspector grants even when offline. Selected roles still govern in-app access. Preserve QC/Admin dispatch gates when operators update shipping.
+**How to apply:** Keep notifications factory-local and target active accounts with approved Admin/Inspector/Production Planner grants even when offline. Selected roles still govern in-app access. Preserve QC/Admin dispatch gates when operators update shipping.
 
 Email activation requires an explicit Admin action showing the intended eligible recipients. An authorized Gmail connection was chosen instead of inventing a sender. Do not send real test messages without recipient-specific approval.
 

@@ -18,7 +18,7 @@ export interface StaffInput {
   role: StaffInputRole;
   /**
      * @minItems 1
-     * @maxItems 3
+     * @maxItems 4
      */
   roles?: StaffInputRolesItem[];
   /** @maxLength 254 */

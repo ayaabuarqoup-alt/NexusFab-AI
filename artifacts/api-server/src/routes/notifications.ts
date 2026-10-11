@@ -31,7 +31,7 @@ router.get("/events", async (_req, res) => {
     chain = chain.then(async () => {
       if (closed || !(await validate())) return;
       send({ type: "refresh" });
-      if (event.notificationId && ["owner", "quality_inspector"].includes(res.locals.role)) {
+      if (event.notificationId && ["owner", "quality_inspector", "production_planner"].includes(res.locals.role)) {
         const n = (await loadVault(res.locals.factory)).notifications?.find(n => n.id === event.notificationId);
         if (n?.recipientIds.includes(res.locals.userId)) send({ type: "alert", notificationId: n.id });
       }
@@ -45,7 +45,7 @@ router.get("/events", async (_req, res) => {
   res.on("close", () => { closed = true; clearInterval(heartbeat); factoryEvents.off("update", onUpdate); });
   send({ type: "refresh" });
 });
-router.get("/notifications", requireRoles("owner", "quality_inspector"), async (_req, res) => {
+router.get("/notifications", requireRoles("owner", "quality_inspector", "production_planner"), async (_req, res) => {
   const v = await loadVault(res.locals.factory);
   const read = await pool.query("SELECT notification_id FROM factory_notification_reads WHERE factory_id=$1 AND user_id=$2", [res.locals.factory, res.locals.userId]);
   const seen = new Set(read.rows.map(r => r.notification_id));
@@ -58,14 +58,14 @@ router.get("/notifications", requireRoles("owner", "quality_inspector"), async (
     return { ...safe, read: seen.has(n.id), emailStatus };
   }));
 });
-router.post("/notifications/:id/read", requireRoles("owner", "quality_inspector"), async (req, res) => {
+router.post("/notifications/:id/read", requireRoles("owner", "quality_inspector", "production_planner"), async (req, res) => {
   await mutateVault(res.locals.factory, async (v, client) => {
     const n = v.notifications?.find(n => n.id === req.params.id && n.recipientIds.includes(res.locals.userId));
     if (!n) throw new OperationError("NOT_FOUND", 404);
     const result = await client.query("INSERT INTO factory_notification_reads(id,user_id,factory_id,notification_id) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING",
       [`${res.locals.userId}:${n.id}`, res.locals.userId, res.locals.factory, n.id]);
     if (result.rowCount) audit(v, { userId: res.locals.userId, userName: res.locals.userName }, "notification_read", n.id);
-  }, { userId: res.locals.userId, sessionId: res.locals.sessionId, roles: ["owner", "quality_inspector"] });
+  }, { userId: res.locals.userId, sessionId: res.locals.sessionId, roles: ["owner", "quality_inspector", "production_planner"] });
   res.json({ message: "Marked read" });
 });
 router.get("/notification-settings", requireRoles("owner"), async (_req, res) => { res.json(await notificationSettings(res.locals.factory)); });
@@ -94,7 +94,7 @@ router.post("/email-deliveries/:id/retry", requireRoles("owner"), async (req, re
     if (!row) throw new OperationError("NOT_FOUND",404);
     if (!["failed", "blocked"].includes(row.status)) throw new OperationError("EMAIL_RETRY_UNSAFE",409);
     if (!row.email_alerts_enabled) throw new OperationError("EMAIL_DISABLED",409);
-    if (!row.active || !row.password_hash || !approvedRoles(row).some(r => ["owner","quality_inspector"].includes(r))) throw new OperationError("FORBIDDEN",403);
+    if (!row.active || !row.password_hash || !approvedRoles(row).some(r => ["owner","quality_inspector","production_planner"].includes(r))) throw new OperationError("FORBIDDEN",403);
     if (!validEmail(row.current_email)) throw new OperationError("INVALID_EMAIL");
     await client.query("UPDATE factory_email_outbox SET status='pending',email=$1,attempts=0,last_error='',next_attempt=NOW(),updated_at=NOW() WHERE id=$2", [row.current_email, row.id]);
     audit(v, { userId: res.locals.userId, userName: res.locals.userName }, "email_retry_requested", row.id);

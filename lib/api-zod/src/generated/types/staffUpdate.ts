@@ -12,7 +12,7 @@ export interface StaffUpdate {
   active: boolean;
   /**
      * @minItems 1
-     * @maxItems 3
+     * @maxItems 4
      */
   roles?: StaffUpdateRolesItem[];
   /** @maxLength 254 */

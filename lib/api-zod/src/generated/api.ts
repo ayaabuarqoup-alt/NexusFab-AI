@@ -40,7 +40,7 @@ export const ChangePasswordResponse = zod.object({
 })
 
 
-export const listStaffResponseRolesMax = 3;
+export const listStaffResponseRolesMax = 4;
 
 export const listStaffResponseEmailMax = 254;
 
@@ -50,10 +50,10 @@ export const ListStaffResponseItem = zod.object({
   "id": zod.string(),
   "username": zod.string(),
   "name": zod.string(),
-  "role": zod.enum(['owner', 'operator', 'quality_inspector']),
+  "role": zod.enum(['owner', 'operator', 'quality_inspector', 'production_planner']),
   "active": zod.boolean(),
   "activated": zod.boolean(),
-  "roles": zod.array(zod.enum(['owner', 'operator', 'quality_inspector'])).min(1).max(listStaffResponseRolesMax),
+  "roles": zod.array(zod.enum(['owner', 'operator', 'quality_inspector', 'production_planner'])).min(1).max(listStaffResponseRolesMax),
   "email": zod.string().max(listStaffResponseEmailMax).optional()
 })
 export const ListStaffResponse = zod.array(ListStaffResponseItem)
@@ -62,7 +62,7 @@ export const ListStaffResponse = zod.array(ListStaffResponseItem)
 export const inviteStaffBodyUsernameRegExp = new RegExp('^[a-z0-9_.@-]{3,100}$');
 export const inviteStaffBodyNameMax = 100;
 
-export const inviteStaffBodyRolesMax = 3;
+export const inviteStaffBodyRolesMax = 4;
 
 export const inviteStaffBodyEmailMax = 254;
 
@@ -71,8 +71,8 @@ export const inviteStaffBodyEmailMax = 254;
 export const InviteStaffBody = zod.object({
   "username": zod.string().regex(inviteStaffBodyUsernameRegExp),
   "name": zod.string().min(1).max(inviteStaffBodyNameMax),
-  "role": zod.enum(['owner', 'operator', 'quality_inspector']),
-  "roles": zod.array(zod.enum(['owner', 'operator', 'quality_inspector'])).min(1).max(inviteStaffBodyRolesMax).optional(),
+  "role": zod.enum(['owner', 'operator', 'quality_inspector', 'production_planner']),
+  "roles": zod.array(zod.enum(['owner', 'operator', 'quality_inspector', 'production_planner'])).min(1).max(inviteStaffBodyRolesMax).optional(),
   "email": zod.string().max(inviteStaffBodyEmailMax).optional()
 })
 
@@ -86,7 +86,7 @@ export const UpdateStaffParams = zod.object({
   "id": zod.coerce.string()
 })
 
-export const updateStaffBodyRolesMax = 3;
+export const updateStaffBodyRolesMax = 4;
 
 export const updateStaffBodyEmailMax = 254;
 
@@ -96,9 +96,9 @@ export const updateStaffBodyUsernameRegExp = new RegExp('^[a-z0-9_.@-]{3,100}$')
 
 
 export const UpdateStaffBody = zod.object({
-  "role": zod.enum(['owner', 'operator', 'quality_inspector']),
+  "role": zod.enum(['owner', 'operator', 'quality_inspector', 'production_planner']),
   "active": zod.boolean(),
-  "roles": zod.array(zod.enum(['owner', 'operator', 'quality_inspector'])).min(1).max(updateStaffBodyRolesMax).optional(),
+  "roles": zod.array(zod.enum(['owner', 'operator', 'quality_inspector', 'production_planner'])).min(1).max(updateStaffBodyRolesMax).optional(),
   "email": zod.string().max(updateStaffBodyEmailMax).optional(),
   "name": zod.string().min(1).max(updateStaffBodyNameMax).optional(),
   "username": zod.string().regex(updateStaffBodyUsernameRegExp).optional()
@@ -139,11 +139,11 @@ export const HealthCheckResponse = zod.object({
 export const GetSessionResponse = zod.object({
   "userId": zod.string().optional(),
   "userName": zod.string().optional(),
-  "role": zod.enum(['owner', 'operator', 'quality_inspector', '']).optional(),
+  "role": zod.enum(['owner', 'operator', 'quality_inspector', '', 'production_planner']).optional(),
   "authenticated": zod.boolean(),
   "factory": zod.string(),
   "factoryName": zod.string(),
-  "availableRoles": zod.array(zod.enum(['owner', 'operator', 'quality_inspector'])),
+  "availableRoles": zod.array(zod.enum(['owner', 'operator', 'quality_inspector', 'production_planner'])),
   "requiresRoleSelection": zod.boolean(),
   "email": zod.string().optional()
 })
@@ -157,11 +157,11 @@ export const LoginBody = zod.object({
 export const LoginResponse = zod.object({
   "userId": zod.string().optional(),
   "userName": zod.string().optional(),
-  "role": zod.enum(['owner', 'operator', 'quality_inspector', '']).optional(),
+  "role": zod.enum(['owner', 'operator', 'quality_inspector', '', 'production_planner']).optional(),
   "authenticated": zod.boolean(),
   "factory": zod.string(),
   "factoryName": zod.string(),
-  "availableRoles": zod.array(zod.enum(['owner', 'operator', 'quality_inspector'])),
+  "availableRoles": zod.array(zod.enum(['owner', 'operator', 'quality_inspector', 'production_planner'])),
   "requiresRoleSelection": zod.boolean(),
   "email": zod.string().optional()
 })
@@ -528,28 +528,28 @@ export const RegisterFactoryBody = zod.object({
 export const RegisterFactoryResponse = zod.object({
   "userId": zod.string().optional(),
   "userName": zod.string().optional(),
-  "role": zod.enum(['owner', 'operator', 'quality_inspector', '']).optional(),
+  "role": zod.enum(['owner', 'operator', 'quality_inspector', '', 'production_planner']).optional(),
   "authenticated": zod.boolean(),
   "factory": zod.string(),
   "factoryName": zod.string(),
-  "availableRoles": zod.array(zod.enum(['owner', 'operator', 'quality_inspector'])),
+  "availableRoles": zod.array(zod.enum(['owner', 'operator', 'quality_inspector', 'production_planner'])),
   "requiresRoleSelection": zod.boolean(),
   "email": zod.string().optional()
 })
 
 
 export const SelectRoleBody = zod.object({
-  "role": zod.enum(['owner', 'operator', 'quality_inspector'])
+  "role": zod.enum(['owner', 'operator', 'quality_inspector', 'production_planner'])
 })
 
 export const SelectRoleResponse = zod.object({
   "userId": zod.string().optional(),
   "userName": zod.string().optional(),
-  "role": zod.enum(['owner', 'operator', 'quality_inspector', '']).optional(),
+  "role": zod.enum(['owner', 'operator', 'quality_inspector', '', 'production_planner']).optional(),
   "authenticated": zod.boolean(),
   "factory": zod.string(),
   "factoryName": zod.string(),
-  "availableRoles": zod.array(zod.enum(['owner', 'operator', 'quality_inspector'])),
+  "availableRoles": zod.array(zod.enum(['owner', 'operator', 'quality_inspector', 'production_planner'])),
   "requiresRoleSelection": zod.boolean(),
   "email": zod.string().optional()
 })
@@ -770,7 +770,7 @@ export const ResolveIssueResponse = zod.object({
 
 export const ListNotificationsResponseItem = zod.object({
   "id": zod.string(),
-  "kind": zod.enum(['production_issue', 'machine_status']),
+  "kind": zod.enum(['production_issue', 'machine_status', 'production_status']),
   "title": zod.string(),
   "message": zod.string(),
   "targetId": zod.string(),
@@ -861,13 +861,157 @@ export const UpdateProfileBody = zod.object({
 export const UpdateProfileResponse = zod.object({
   "userId": zod.string().optional(),
   "userName": zod.string().optional(),
-  "role": zod.enum(['owner', 'operator', 'quality_inspector', '']).optional(),
+  "role": zod.enum(['owner', 'operator', 'quality_inspector', '', 'production_planner']).optional(),
   "authenticated": zod.boolean(),
   "factory": zod.string(),
   "factoryName": zod.string(),
-  "availableRoles": zod.array(zod.enum(['owner', 'operator', 'quality_inspector'])),
+  "availableRoles": zod.array(zod.enum(['owner', 'operator', 'quality_inspector', 'production_planner'])),
   "requiresRoleSelection": zod.boolean(),
   "email": zod.string().optional()
 })
+
+
+export const listPlansResponseNameMax = 120;
+
+export const listPlansResponseNotesMax = 2000;
+
+export const listPlansResponseAssignmentsMax = 100;
+
+
+
+export const ListPlansResponseItem = zod.object({
+  "name": zod.string().min(1).max(listPlansResponseNameMax),
+  "period": zod.enum(['daily', 'weekly']),
+  "startDate": zod.string(),
+  "endDate": zod.string(),
+  "status": zod.enum(['draft', 'scheduled', 'completed']),
+  "notes": zod.string().max(listPlansResponseNotesMax).optional(),
+  "assignments": zod.array(zod.object({
+  "jobId": zod.string(),
+  "machineId": zod.enum(['m1', 'm2', 'm3']),
+  "operatorId": zod.string(),
+  "startAt": zod.string(),
+  "endAt": zod.string()
+})).max(listPlansResponseAssignmentsMax),
+  "id": zod.string(),
+  "updatedAt": zod.string(),
+  "updatedBy": zod.string()
+})
+export const ListPlansResponse = zod.array(ListPlansResponseItem)
+
+
+export const createPlanBodyNameMax = 120;
+
+export const createPlanBodyNotesMax = 2000;
+
+export const createPlanBodyAssignmentsMax = 100;
+
+
+
+export const CreatePlanBody = zod.object({
+  "name": zod.string().min(1).max(createPlanBodyNameMax),
+  "period": zod.enum(['daily', 'weekly']),
+  "startDate": zod.string(),
+  "endDate": zod.string(),
+  "status": zod.enum(['draft', 'scheduled', 'completed']),
+  "notes": zod.string().max(createPlanBodyNotesMax).optional(),
+  "assignments": zod.array(zod.object({
+  "jobId": zod.string(),
+  "machineId": zod.enum(['m1', 'm2', 'm3']),
+  "operatorId": zod.string(),
+  "startAt": zod.string(),
+  "endAt": zod.string()
+})).max(createPlanBodyAssignmentsMax)
+})
+
+export const createPlanResponseNameMax = 120;
+
+export const createPlanResponseNotesMax = 2000;
+
+export const createPlanResponseAssignmentsMax = 100;
+
+
+
+export const CreatePlanResponse = zod.object({
+  "name": zod.string().min(1).max(createPlanResponseNameMax),
+  "period": zod.enum(['daily', 'weekly']),
+  "startDate": zod.string(),
+  "endDate": zod.string(),
+  "status": zod.enum(['draft', 'scheduled', 'completed']),
+  "notes": zod.string().max(createPlanResponseNotesMax).optional(),
+  "assignments": zod.array(zod.object({
+  "jobId": zod.string(),
+  "machineId": zod.enum(['m1', 'm2', 'm3']),
+  "operatorId": zod.string(),
+  "startAt": zod.string(),
+  "endAt": zod.string()
+})).max(createPlanResponseAssignmentsMax),
+  "id": zod.string(),
+  "updatedAt": zod.string(),
+  "updatedBy": zod.string()
+})
+
+
+export const UpdatePlanParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const updatePlanBodyNameMax = 120;
+
+export const updatePlanBodyNotesMax = 2000;
+
+export const updatePlanBodyAssignmentsMax = 100;
+
+
+
+export const UpdatePlanBody = zod.object({
+  "name": zod.string().min(1).max(updatePlanBodyNameMax),
+  "period": zod.enum(['daily', 'weekly']),
+  "startDate": zod.string(),
+  "endDate": zod.string(),
+  "status": zod.enum(['draft', 'scheduled', 'completed']),
+  "notes": zod.string().max(updatePlanBodyNotesMax).optional(),
+  "assignments": zod.array(zod.object({
+  "jobId": zod.string(),
+  "machineId": zod.enum(['m1', 'm2', 'm3']),
+  "operatorId": zod.string(),
+  "startAt": zod.string(),
+  "endAt": zod.string()
+})).max(updatePlanBodyAssignmentsMax)
+})
+
+export const updatePlanResponseNameMax = 120;
+
+export const updatePlanResponseNotesMax = 2000;
+
+export const updatePlanResponseAssignmentsMax = 100;
+
+
+
+export const UpdatePlanResponse = zod.object({
+  "name": zod.string().min(1).max(updatePlanResponseNameMax),
+  "period": zod.enum(['daily', 'weekly']),
+  "startDate": zod.string(),
+  "endDate": zod.string(),
+  "status": zod.enum(['draft', 'scheduled', 'completed']),
+  "notes": zod.string().max(updatePlanResponseNotesMax).optional(),
+  "assignments": zod.array(zod.object({
+  "jobId": zod.string(),
+  "machineId": zod.enum(['m1', 'm2', 'm3']),
+  "operatorId": zod.string(),
+  "startAt": zod.string(),
+  "endAt": zod.string()
+})).max(updatePlanResponseAssignmentsMax),
+  "id": zod.string(),
+  "updatedAt": zod.string(),
+  "updatedBy": zod.string()
+})
+
+
+export const ListPlanningOperatorsResponseItem = zod.object({
+  "id": zod.string(),
+  "name": zod.string()
+})
+export const ListPlanningOperatorsResponse = zod.array(ListPlanningOperatorsResponseItem)
 
 

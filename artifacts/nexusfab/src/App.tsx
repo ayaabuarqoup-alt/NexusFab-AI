@@ -22,6 +22,8 @@ import Quality from '@/pages/quality';
 import Machines from '@/pages/machines';
 import Copilot from '@/pages/copilot';
 import Account from '@/pages/account';
+import Planning, { Schedule } from '@/pages/planning';
+import PlanningAnalytics from '@/pages/planning-analytics';
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } } });
 
@@ -61,7 +63,7 @@ function Gate() {
           <Route path="/" component={Home} />
           <Route path="/reports">{() => <RoleGate allow={['owner']}><Reports /></RoleGate>}</Route>
           <Route path="/audit">{() => <RoleGate allow={['owner']}><Audit /></RoleGate>}</Route>
-          <Route path="/notifications">{() => <RoleGate allow={['owner', 'quality_inspector']}><Notifications /></RoleGate>}</Route>
+          <Route path="/notifications">{() => <RoleGate allow={['owner', 'quality_inspector', 'production_planner']}><Notifications /></RoleGate>}</Route>
           <Route path="/issues" component={Issues} />
           <Route path="/jobs" component={Jobs} />
           <Route path="/production" component={Production} />
@@ -69,6 +71,9 @@ function Gate() {
           <Route path="/machines" component={Machines} />
           <Route path="/copilot" component={Copilot} />
           <Route path="/account" component={Account} />
+          <Route path="/planning">{() => <RoleGate allow={['owner', 'production_planner']}><Planning /></RoleGate>}</Route>
+          <Route path="/planning-analytics">{() => <RoleGate allow={['owner', 'production_planner']}><PlanningAnalytics /></RoleGate>}</Route>
+          <Route path="/schedule">{() => <RoleGate allow={['operator', 'quality_inspector']}><Schedule /></RoleGate>}</Route>
           <Route component={NotFound} />
         </Switch>
       </RoutedErrorBoundary>

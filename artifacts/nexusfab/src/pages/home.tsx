@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "wouter";
-import { ArrowUpRight, BarChart3, Bell, ClipboardCheck, History, Users } from "lucide-react";
+import { ArrowUpRight, BarChart3, Bell, CalendarPlus, CalendarRange, ClipboardCheck, Gauge, History, LineChart, Users } from "lucide-react";
 import {
   useGetSummary, getGetSummaryQueryKey, useListJobs, getListJobsQueryKey, useListLogs, getListLogsQueryKey,
   useListIssues, getListIssuesQueryKey, useListAudit, getListAuditQueryKey, type Issue,
@@ -13,6 +13,7 @@ import { EditJobButton, ShippingControl } from "@/components/job-edit";
 import { useNotifications } from "@/components/alerts";
 import { qcTone } from "@/pages/production";
 import { cn } from "@/lib/utils";
+import { usePlans, usePlanningOperators, Timeline, psTone, useFmtUtc } from "@/pages/planning";
 
 export function useIssues() {
   return useListIssues({ query: { queryKey: getListIssuesQueryKey(), ...useProtected() } });
@@ -209,12 +210,109 @@ function OperatorHome() {
             );
           })}
       </Panel>
+      <MyAssignments />
       <LiveMachines editable />
     </div>
   );
 }
 
+function MyAssignments() {
+  const { t } = useI18n();
+  const fmt = useFmtUtc();
+  const { session } = useRole();
+  const plans = usePlans();
+  const jobs = useListJobs({ query: { queryKey: getListJobsQueryKey(), ...useProtected() } });
+  const me = session?.userId ?? "";
+  const mine = (plans.data ?? []).filter((p) => p.status === "scheduled").flatMap((p) => p.assignments.filter((a) => a.operatorId === me).map((a) => ({ ...a, plan: p.name, pid: p.id })))
+    .filter((a) => a.endAt >= new Date(Date.now() - 86_400_000).toISOString()).sort((a, b) => a.startAt.localeCompare(b.startAt));
+  return (
+    <Panel title={t("myAssignments")} right={<Link href="/schedule" className="text-[11px] font-medium text-primary" data-testid="link-schedule">{t("viewSchedule")}</Link>} className="[&>div]:p-0">
+      {plans.isError ? <div className="p-4"><ErrorState error={plans.error} onRetry={() => plans.refetch()} /></div> : !plans.data ? <div className="space-y-2 p-4"><Sk className="h-12" /></div>
+        : mine.length === 0 ? <div className="p-4"><Empty title={t("noMyAssignments")} sub={t("noMyAssignmentsSub")} /></div>
+        : <ul className="divide-y">{mine.slice(0, 8).map((a, i) => (
+          <li key={`${a.pid}-${i}`} className="grid gap-1 px-4 py-2.5 sm:grid-cols-[1.4fr_60px_1.6fr] sm:items-center" data-testid={`row-my-assignment-${a.pid}-${i}`}>
+            <span className="min-w-0"><span className="block truncate text-sm font-medium">{jobs.data?.find((j) => j.id === a.jobId)?.name ?? a.jobId}</span><span className="block truncate text-[11px] text-muted-foreground">{a.plan}</span></span>
+            <span className="num text-xs font-semibold">{a.machineId.toUpperCase()}</span>
+            <span className="num text-[11px] text-muted-foreground">{fmt(a.startAt)} → {fmt(a.endAt)}</span>
+          </li>))}</ul>}
+    </Panel>
+  );
+}
+
+function PlannerHome() {
+  const { t, nf } = useI18n();
+  const prot = useProtected();
+  const plans = usePlans();
+  const ops = usePlanningOperators(true);
+  const jobs = useListJobs({ query: { queryKey: getListJobsQueryKey(), ...prot } });
+  const issues = useIssues();
+  const ms = useMachineStates();
+  const notif = useNotifications();
+  const today = new Date().toISOString().slice(0, 10);
+  const planned = new Set((plans.data ?? []).filter((p) => p.status !== "completed").flatMap((p) => p.assignments.map((a) => a.jobId)));
+  const openJobs = (jobs.data ?? []).filter((j) => j.status !== "dispatched");
+  const unplanned = openJobs.filter((j) => !planned.has(j.id)).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  const upcoming = (plans.data ?? []).filter((p) => p.status !== "completed" && p.endDate >= today).sort((a, b) => a.startDate.localeCompare(b.startDate));
+  const links = [
+    { href: "/planning#new", k: "qlp_new", d: "qlp_new_d", I: CalendarPlus },
+    { href: "/planning", k: "qlp_schedule", d: "qlp_schedule_d", I: CalendarRange },
+    { href: "/machines", k: "qlp_resources", d: "qlp_resources_d", I: Gauge },
+    { href: "/planning-analytics", k: "qlp_analytics", d: "qlp_analytics_d", I: LineChart },
+  ] as const;
+  return (
+    <div className="space-y-6">
+      <PageHeader title={t("homePlanTitle")} sub={t("homePlanSub")} />
+      <Grid>
+        <Kpi label={t("kpiScheduled")} value={plans.data?.filter((p) => p.status === "scheduled").length} href="/planning" testId="kpi-scheduled" />
+        <Kpi label={t("kpiDrafts")} value={plans.data?.filter((p) => p.status === "draft").length} tone="warn" href="/planning" testId="kpi-drafts" />
+        <Kpi label={t("kpiUnplanned")} value={jobs.data && plans.data ? unplanned.length : undefined} tone="warn" href="/jobs" testId="kpi-unplanned" />
+        <Kpi label={t("kpiUnread")} value={notif.data?.filter((n) => !n.read).length} tone="warn" href="/notifications" testId="kpi-unread" />
+      </Grid>
+      <section className="rise">
+        <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{t("quickLinks")}</h2>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {links.map(({ href, k, d, I }) => (
+            <Link key={k} href={href} className="group flex items-start gap-3 rounded-md border bg-sidebar p-4 text-sidebar-foreground transition hover:brightness-125" data-testid={`link-quick-${k}`}>
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-sidebar-accent text-[hsl(32_95%_60%)]"><I className="h-4 w-4" /></span>
+              <span className="min-w-0"><span className="flex items-center gap-1 text-sm font-semibold text-white">{t(k)}<ArrowUpRight className="h-3.5 w-3.5 opacity-50 rtl:-scale-x-100" /></span><span className="mt-0.5 block text-xs text-sidebar-foreground/65">{t(d)}</span></span>
+            </Link>
+          ))}
+        </div>
+      </section>
+      <Panel title={t("upcomingPlans")} right={<Link href="/planning" className="text-[11px] font-medium text-primary" data-testid="link-plans-all">{t("viewAll")}</Link>}>
+        {plans.isError ? <ErrorState error={plans.error} onRetry={() => plans.refetch()} /> : !plans.data ? <Sk className="h-40" />
+          : upcoming.length === 0 ? <Empty title={t("noPlans")} sub={t("noPlansSub")} />
+          : <div className="space-y-5">{upcoming.slice(0, 2).map((p) => (
+            <div key={p.id} className="space-y-2" data-testid={`home-plan-${p.id}`}>
+              <div className="flex flex-wrap items-center gap-2"><span className="text-sm font-semibold">{p.name}</span><Pill tone={psTone[p.status]}>{t(`ps_${p.status}` as TKey)}</Pill><span className="num text-[11px] text-muted-foreground">{p.startDate}{p.endDate !== p.startDate && ` → ${p.endDate}`} · {nf(p.assignments.length)} {t("assignments")}</span></div>
+              <Timeline plan={p} jobs={jobs.data} ops={ops.data} />
+            </div>))}</div>}
+      </Panel>
+      <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+        <Panel title={t("unplannedJobs")} right={<Link href="/jobs" className="text-[11px] font-medium text-primary" data-testid="link-jobs-all">{t("viewAll")}</Link>} className="[&>div]:p-0">
+          {jobs.isError ? <div className="p-4"><ErrorState error={jobs.error} onRetry={() => jobs.refetch()} /></div> : !jobs.data ? <div className="p-4"><Sk className="h-24" /></div>
+            : unplanned.length === 0 ? <div className="p-4"><Empty title={t("noJobs")} sub={t("noJobsSub")} /></div>
+            : <ul className="divide-y">{unplanned.slice(0, 7).map((j) => (
+              <li key={j.id} className="flex items-center gap-3 px-4 py-2.5" data-testid={`row-unplanned-${j.id}`}>
+                <div className="min-w-0 flex-1"><div className="truncate text-sm font-medium">{j.name}</div><div className="num text-[11px] text-muted-foreground">{j.machineId.toUpperCase()} · {t("due")} {j.dueDate} · {nf(j.goodQty)}/{nf(j.target)}</div></div>
+              </li>))}</ul>}
+        </Panel>
+        <Panel title={t("openIssuesList")} right={<Link href="/issues" className="text-[11px] font-medium text-primary" data-testid="link-issues-all">{t("viewAll")}</Link>}>
+          {issues.isError ? <ErrorState error={issues.error} onRetry={() => issues.refetch()} /> : <IssueList issues={issues.data} limit={5} />}
+        </Panel>
+      </div>
+      <Grid>
+        <Kpi label={t("kpiAssigned")} value={plans.data?.reduce((a, p) => a + (p.status === "scheduled" ? p.assignments.length : 0), 0)} href="/planning" testId="kpi-assigned" />
+        <Kpi label={t("openOrders")} value={jobs.data ? openJobs.length : undefined} href="/jobs" testId="kpi-open-orders" />
+        <Kpi label={t("kpiStopped")} value={ms.data?.filter((m) => m.status === "stopped" || m.status === "maintenance").length} tone="bad" href="/machines" testId="kpi-stopped" />
+        <Kpi label={t("kpiOpenIssues")} value={issues.data?.filter((i) => i.status === "open").length} tone="warn" href="/issues" testId="kpi-open-issues" />
+      </Grid>
+      <LiveMachines editable={false} />
+    </div>
+  );
+}
+
 export default function Home() {
-  const { isOwner, isInspector } = useRole();
-  return isOwner ? <AdminHome /> : isInspector ? <InspectorHome /> : <OperatorHome />;
+  const { isOwner, isInspector, isPlanner } = useRole();
+  return isOwner ? <AdminHome /> : isPlanner ? <PlannerHome /> : isInspector ? <InspectorHome /> : <OperatorHome />;
 }

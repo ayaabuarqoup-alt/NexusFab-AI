@@ -169,13 +169,17 @@ export function useRole() {
   return {
     session: data, role, demo,
     canCreate: role === "owner" || role === "operator",
+    canCreateJobs: role === "owner" || role === "operator" || role === "production_planner",
+    canShip: role === "owner" || role === "operator",
+    canPlan: role === "owner" || role === "production_planner",
+    isPlanner: role === "production_planner",
     canReview: role === "owner" || role === "quality_inspector",
     canDispatch: role === "owner",
     isOwner: role === "owner",
     isInspector: role === "quality_inspector",
     isOperator: role === "operator",
-    canAlerts: role === "owner" || role === "quality_inspector",
-    canEditJobs: role === "owner" || role === "operator",
+    canAlerts: role === "owner" || role === "quality_inspector" || role === "production_planner",
+    canEditJobs: role === "owner" || role === "operator" || role === "production_planner",
     canMachine: role === "owner" || role === "operator",
   };
 }
